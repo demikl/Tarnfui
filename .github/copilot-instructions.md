@@ -1,65 +1,65 @@
-Mon cahier des charges est là : #file:CDC.md : tu le mettras à jour en fonction de l'avancement des implémentations, et tu pourras ajouter des items pour ce qu'il reste à faire ou les améliorations potentielles.
+My requirements document is located here: #file:Design.md. Update it as the implementation progresses, and feel free to add items for remaining tasks or potential improvements.
 
-# Prompt pour GitHub Copilot : Initialisation d'un projet Python moderne
+# Prompt for GitHub Copilot: Initializing a Modern Python Project
 
-## Objectif
+## Objective
 
-Générer la structure de base et les fichiers de configuration initiaux pour un nouveau projet Python. Ce projet met l'accent sur une gestion moderne des dépendances, un outillage de qualité de code, le développement conteneurisé, le déploiement via Docker/Helm/Kubernetes, l'automatisation CI/CD avec GitHub Actions, des tests unitaires systématiques et une attention particulière à l'efficacité mémoire.
+Generate the base structure and initial configuration files for a new Python project. This project emphasizes modern dependency management, quality tooling, containerized development, deployment via Docker/Helm/Kubernetes, CI/CD automation with GitHub Actions, systematic unit testing, and a focus on memory efficiency.
 
-## Spécifications Techniques
+## Technical Specifications
 
-1. **Langage :** Python (dernière version stable ou spécifier si besoin, ex: 3.13+)
-2. **Gestion des Dépendances :** Utiliser `uv` pour l'installation et la gestion des dépendances.
-    * Générer un fichier `pyproject.toml` initial configuré pour `uv`.
-    * Inclure `ruff` comme dépendance de développement.
-    * Inclure `pytest` comme dépendance de développement pour les tests.
-    * Ajouter des placeholders pour les dépendances de production.
-3. **Qualité du Code (Linting & Formatage) :** Utiliser `ruff` pour le formatage et le linting.
-    * Configurer `ruff` dans `pyproject.toml` avec des règles de base raisonnables (ex: activer les règles par défaut, isort, flake8).
-    * Configurer `ruff format`.
-4. **Environnement de Développement :** VS Code Dev Container.
-    * Créer un répertoire `.devcontainer`.
-    * Générer un fichier `.devcontainer/devcontainer.json` configuré pour Python, utilisant une image de base appropriée (ex: `mcr.microsoft.com/devcontainers/python:3.13`).
-    * Configurer `devcontainer.json` pour installer `uv` et `ruff` automatiquement.
-    * Inclure les extensions VS Code recommandées (ex: `ms-python.python`, `ms-azuretools.vscode-docker`, `charliermarsh.ruff`).
-    * Configurer les `postCreateCommand` ou `postAttachCommand` si nécessaire pour installer les dépendances avec `uv sync` via le `pyproject.toml`.
-    * Générer un fichier `.devcontainer/Dockerfile` basique si des personnalisations de l'image de dev sont nécessaires (sinon, l'image de base peut suffire).
-5. **Structure du Projet :**
-    * Utiliser une structure de type `src/tarnfui/` pour le code source.
-    * Créer un répertoire `tests/` pour les tests unitaires.
-    * Inclure un `.gitignore` adapté aux projets Python et aux fichiers de l'environnement (VSCode, etc.).
-    * Créer un `README.md` basique avec des sections pour l'installation, l'utilisation, les tests et le déploiement.
-6. **Packaging & Déploiement :**
-    * **Docker :** Générer un `Dockerfile` multi-étages optimisé pour la production.
-        * Utiliser une image de base Python slim.
-        * Copier uniquement les dépendances nécessaires et le code source.
-        * Exécuter l'application avec un utilisateur non-root.
-        * Tenir compte de l'installation des dépendances via `uv`.
-    * **Helm :** Créer une structure de chart Helm basique dans un répertoire `charts/tarnfui/`.
+1. **Language:** Python (latest stable version or specify if needed, e.g., 3.13+)
+2. **Dependency Management:** Use `uv` for dependency installation and management.
+    * Generate an initial `pyproject.toml` file configured for `uv`.
+    * Include `ruff` as a development dependency.
+    * Include `pytest` as a development dependency for testing.
+    * Add placeholders for production dependencies.
+3. **Code Quality (Linting & Formatting):** Use `ruff` for formatting and linting.
+    * Configure `ruff` in `pyproject.toml` with reasonable default rules (e.g., enable default rules, isort, flake8).
+    * Configure `ruff format`.
+4. **Development Environment:** VS Code Dev Container.
+    * Create a `.devcontainer` directory.
+    * Generate a `.devcontainer/devcontainer.json` file configured for Python, using an appropriate base image (e.g., `mcr.microsoft.com/devcontainers/python:3.13`).
+    * Configure `devcontainer.json` to automatically install `uv` and `ruff`.
+    * Include recommended VS Code extensions (e.g., `ms-python.python`, `ms-azuretools.vscode-docker`, `charliermarsh.ruff`).
+    * Configure `postCreateCommand` or `postAttachCommand` if necessary to install dependencies with `uv sync` via `pyproject.toml`.
+    * Generate a basic `.devcontainer/Dockerfile` if customizations to the dev image are needed (otherwise, the base image may suffice).
+5. **Project Structure:**
+    * Use a structure like `src/tarnfui/` for source code.
+    * Create a `tests/` directory for unit tests.
+    * Include a `.gitignore` file tailored for Python projects and environment files (VSCode, etc.).
+    * Create a basic `README.md` with sections for installation, usage, testing, and deployment.
+6. **Packaging & Deployment:**
+    * **Docker:** Generate a multi-stage `Dockerfile` optimized for production.
+        * Use a slim Python base image.
+        * Copy only necessary dependencies and source code.
+        * Run the application as a non-root user.
+        * Account for dependency installation via `uv`.
+    * **Helm:** Create a basic Helm chart structure in a `charts/tarnfui/` directory.
         * `Chart.yaml`
-        * `values.yaml` (avec des placeholders pour l'image, le tag, les replicas, les ressources, etc.)
-        * `templates/deployment.yaml` (utilisant les valeurs de `values.yaml`)
-        * `templates/service.yaml` (basique)
-        * `templates/_helpers.tpl` (si nécessaire)
+        * `values.yaml` (with placeholders for image, tag, replicas, resources, etc.)
+        * `templates/deployment.yaml` (using values from `values.yaml`)
+        * `templates/service.yaml` (basic)
+        * `templates/_helpers.tpl` (if needed)
         * `.helmignore`
-7. **Automatisation (CI/CD) :** GitHub Actions.
-    * Créer un répertoire `.github/workflows`.
-    * Générer un workflow (`ci.yaml`) qui se déclenche sur `push` (branches `main`/`master`) et `pull_request`. Ce workflow doit :
-        * Checkout le code.
+7. **Automation (CI/CD):** GitHub Actions.
+    * Create a `.github/workflows` directory.
+    * Generate a workflow (`ci.yaml`) triggered on `push` (branches `main`/`master`) and `pull_request`. This workflow should:
+        * Checkout the code.
         * Setup Python.
-        * Installer `uv`.
-        * Installer les dépendances (`uv sync --dev`).
-        * Lancer `ruff check .` et `ruff format --check .`.
-        * Lancer les tests unitaires avec `pytest`.
-    * Générer un workflow (`cd.yaml`) qui se déclenche sur `push` sur la branche `main` (après le succès de CI). Ce workflow doit (avec placeholders pour les secrets/registries) :
-        * Build l'image Docker de production.
-        * Tag l'image Docker (ex: avec le SHA du commit).
-        * Push l'image Docker vers un registry (ex: GitHub Container Registry - GHCR).
-        * Mettre à jour et publier la chart Helm sur un dépôt public
-8. **Tests :**
-    * Exiger des tests unitaires pour chaque fonctionnalité.
-    * Générer un exemple simple de fichier de test dans `tests/` (ex: `tests/test_example.py`) utilisant `pytest`, qui teste une fonction d'exemple.
-    * Créer un fichier source d'exemple correspondant (ex: `src/tarnfui/example.py`).
-9. **Performance (Consommation Mémoire) :**
-    * Le code devra être écrit en gardant à l'esprit l'efficacité mémoire, surtout lors du traitement potentiel d'un grand nombre d'objets/ressources.
-    * Ajouter un commentaire dans le `README.md` ou dans un fichier `CONTRIBUTING.md` (à créer) mentionnant cette contrainte et suggérant l'utilisation de générateurs, d'itérateurs, de vues mémoire (`memoryview`), ou de bibliothèques comme `psutil` ou des profileurs mémoire si nécessaire.
+        * Install `uv`.
+        * Install dependencies (`uv sync --dev`).
+        * Run `ruff check .` and `ruff format --check .`.
+        * Run unit tests with `pytest`.
+    * Generate a workflow (`cd.yaml`) triggered on `push` to the `main` branch (after successful CI). This workflow should (with placeholders for secrets/registries):
+        * Build the production Docker image.
+        * Tag the Docker image (e.g., with the commit SHA).
+        * Push the Docker image to a registry (e.g., GitHub Container Registry - GHCR).
+        * Update and publish the Helm chart to a public repository.
+8. **Testing:**
+    * Require unit tests for every feature.
+    * Generate a simple example test file in `tests/` (e.g., `tests/test_example.py`) using `pytest`, which tests a sample function.
+    * Create a corresponding example source file (e.g., `src/tarnfui/example.py`).
+9. **Performance (Memory Efficiency):**
+    * Write code with memory efficiency in mind, especially when handling a large number of objects/resources.
+    * Add a comment in the `README.md` or a `CONTRIBUTING.md` file (to be created) mentioning this constraint and suggesting the use of generators, iterators, memory views (`memoryview`), or libraries like `psutil` or memory profilers if needed.
