@@ -1,0 +1,24 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Build Docker image
+        run: |
+          docker build -t ghcr.io/your-org/tarnfui:${{ github.sha }} .
+      - name: Push Docker image
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker push ghcr.io/your-org/tarnfui:${{ github.sha }}
+      - name: Publish Helm chart
+        run: |
+          helm package charts/tarnfui
+          helm repo index .
