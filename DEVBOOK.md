@@ -4,6 +4,9 @@ This program is designed to run in a Kubernetes pod and will stop the pods in th
 
 Written in Python with typing, dependencies managed using "uv," and linting/formatting handled by "ruff."
 
+The python code should be organized into classes and method, and each class and method
+should be documented. The entrypoint should be in a `cli.py` file.
+
 ## Development Journal and Progress Tracker
 
 This file serves as a development journal and project progress tracker. Tasks are tracked using the following emoji-based system:
@@ -17,54 +20,54 @@ This file serves as a development journal and project progress tracker. Tasks ar
 
 1. **Project and Development Environment Setup**
    - ✅ Set up the project structure (src/tarnfui, tests, etc.)
-   - 🟡 Configure pyproject.toml with uv and dependencies
+   - ✅ Configure pyproject.toml with uv and dependencies
    - ❌ Configure the development container environment for VSCode
-   - ❌ Write initial unit tests to validate the configuration
+   - ✅ Write initial unit tests to validate the configuration
 
 2. **Kubernetes Client**
-   - ❌ Write unit tests for interacting with the Kubernetes API
-   - ❌ Implement a client class for the Kubernetes API
+   - ✅ Write unit tests for interacting with the Kubernetes API
+   - ✅ Implement a client class for the Kubernetes API
    - ❌ Perform integration tests with a test cluster (minikube or kind)
 
 ### Phase 2: Core Features
 
 1. **Detection of Working/Non-Working Hours**
-   - ❌ Write unit tests for time detection logic
-   - ❌ Implement logic to detect night vs. day and weekdays vs. weekends
-   - ❌ Write parameterized tests for different time zones and configurations
+   - ✅ Write unit tests for time detection logic
+   - ✅ Implement logic to detect night vs. day and weekdays vs. weekends
+   - ✅ Write parameterized tests for different time zones and configurations
 
 2. **Saving Deployment States**
-   - ❌ Write unit tests for saving the state (number of replicas)
-   - ❌ Implement persistent storage for deployment states
+   - ✅ Write unit tests for saving the state (number of replicas)
+   - ✅ Implement persistent storage for deployment states
    - ❌ Perform integration tests to verify persistence
 
 3. **Stopping Pods**
-   - ❌ Write unit tests for the logic to stop pods (set replicas to 0)
-   - ❌ Implement the stop functionality
+   - ✅ Write unit tests for the logic to stop pods (set replicas to 0)
+   - ✅ Implement the stop functionality
    - ❌ Perform robustness tests with various error scenarios
 
 4. **Restarting Deployments**
-   - ❌ Write unit tests for the logic to restore replicas
-   - ❌ Implement the functionality to restore replicas
+   - ✅ Write unit tests for the logic to restore replicas
+   - ✅ Implement the functionality to restore replicas
    - ❌ Test to ensure proper restoration functionality
 
 ### Phase 3: Orchestration and Scheduling
 
 1. **Task Scheduler**
-   - ❌ Write unit tests for the scheduler
-   - ❌ Implement a scheduler to execute stop/start actions
+   - ✅ Write unit tests for the scheduler
+   - ✅ Implement a scheduler to execute stop/start actions
    - ❌ Perform integration tests to verify execution at defined times
 
 2. **Configurable Settings**
-   - ❌ Write unit tests for the configuration system
-   - ❌ Implement a configuration system (env vars, config files, etc.)
+   - ✅ Write unit tests for the configuration system
+   - ✅ Implement a configuration system (env vars, config files, etc.)
    - ❌ Perform integration tests with different configurations
 
 ### Phase 4: Deployment and Monitoring
 
 1. **Logging and Metrics**
-   - ❌ Write unit tests for the logging system
-   - ❌ Implement a logging and metrics collection system
+   - 🟡 Write unit tests for the logging system
+   - 🟡 Implement a logging and metrics collection system
    - ❌ Perform integration tests to verify metrics collection
 
 2. **Performance Testing and Memory Optimization**
@@ -97,4 +100,4 @@ This file serves as a development journal and project progress tracker. Tasks ar
 ## To Do
 
 - ✅ Set up CI/CD workflows for automated releases.
-- ❌ Regularly update this file to reflect progress.
+- 🟡 Regularly update this file to reflect progress.

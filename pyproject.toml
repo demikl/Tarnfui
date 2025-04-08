@@ -7,10 +7,10 @@ license = "MIT"
 requires-python = "~=3.13.0"
 
 [project.scripts]
-tarnfui = "tarnfui:main"
+tarnfui = "tarnfui.cli:main"
 
 [tool.uv]
-dependencies = []
+dependencies = ["kubernetes", "pydantic", "schedule"]
 dev-dependencies = ["ruff", "pytest"]
 
 [tool.ruff]

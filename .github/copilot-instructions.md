@@ -24,5 +24,7 @@
   - 🟡 In Progress
   - ❌ Not Started
 - Update `DEVBOOK.md` regularly to reflect the current state of the project.
+- Update `DEVBOOK.md` regularly to rephrase whatever text I may add to this file, so that it conforms to the requirements defined in the section "Language and Tone" above.
 - **Testing**: Unit tests are required for every feature.
 - **Performance**: Write memory-efficient code, especially when handling a large number of objects or resources.
+- Ensure the Helm chart is updated to include any new environment variables, CLI arguments, commands, or options added to the project.
