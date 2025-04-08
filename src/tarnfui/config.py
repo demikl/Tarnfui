@@ -2,6 +2,7 @@
 
 This module handles the configuration of Tarnfui through environment variables.
 """
+
 import os
 from enum import Enum
 from typing import Union
@@ -15,6 +16,7 @@ class Weekday(str, Enum):
 
     This provides a more readable way to specify days compared to using integers.
     """
+
     MON = "mon"
     TUE = "tue"
     WED = "wed"
@@ -77,17 +79,22 @@ class TarnfuiConfig(BaseModel):
         active_days: List of days when the cluster should be active (using Weekday enum).
         timezone: Timezone to use for time calculations.
     """
-    shutdown_time: str = Field(default="19:00", env="TARNFUI_SHUTDOWN_TIME")
-    startup_time: str = Field(default="07:00", env="TARNFUI_STARTUP_TIME")
+
+    shutdown_time: str = Field(default="19:00", json_schema_extra={
+                               "env": "TARNFUI_SHUTDOWN_TIME"})
+    startup_time: str = Field(default="07:00", json_schema_extra={
+                              "env": "TARNFUI_STARTUP_TIME"})
     active_days: list[Weekday] = Field(
         default=[Weekday.MON, Weekday.TUE,
                  Weekday.WED, Weekday.THU, Weekday.FRI],
-        env="TARNFUI_ACTIVE_DAYS"
+        json_schema_extra={"env": "TARNFUI_ACTIVE_DAYS"},
     )
-    timezone: str = Field(default="UTC", env="TARNFUI_TIMEZONE")
-    reconciliation_interval: int = Field(
-        default=60, env="TARNFUI_RECONCILIATION_INTERVAL")
-    namespace: str | None = Field(default=None, env="TARNFUI_NAMESPACE")
+    timezone: str = Field(default="UTC", json_schema_extra={
+                          "env": "TARNFUI_TIMEZONE"})
+    reconciliation_interval: int = Field(default=60, json_schema_extra={
+                                         "env": "TARNFUI_RECONCILIATION_INTERVAL"})
+    namespace: str | None = Field(default=None, json_schema_extra={
+                                  "env": "TARNFUI_NAMESPACE"})
 
     @field_validator("shutdown_time", "startup_time")
     def validate_time_format(cls, v):
