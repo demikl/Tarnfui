@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Union
 
 import pytz
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class Weekday(str, Enum):
@@ -89,7 +89,7 @@ class TarnfuiConfig(BaseModel):
         default=60, env="TARNFUI_RECONCILIATION_INTERVAL")
     namespace: str | None = Field(default=None, env="TARNFUI_NAMESPACE")
 
-    @validator("shutdown_time", "startup_time")
+    @field_validator("shutdown_time", "startup_time")
     def validate_time_format(cls, v):
         """Validate time format as HH:MM"""
         try:
@@ -101,7 +101,7 @@ class TarnfuiConfig(BaseModel):
             raise ValueError("Time must be in format HH:MM")
         return v
 
-    @validator("timezone")
+    @field_validator("timezone")
     def validate_timezone(cls, v):
         """Validate that the timezone is valid"""
         try:
