@@ -8,7 +8,13 @@ from kubernetes.client.models.v1_deployment import V1Deployment
 from kubernetes.client.models.v1_deployment_spec import V1DeploymentSpec
 from kubernetes.client.models.v1_object_meta import V1ObjectMeta
 
-from tarnfui.kubernetes import TARNFUI_REPLICAS_ANNOTATION, KubernetesClient
+from tarnfui.kubernetes import (
+    EVENT_REASON_STARTED,
+    EVENT_REASON_STOPPED,
+    EVENT_TYPE_NORMAL,
+    TARNFUI_REPLICAS_ANNOTATION,
+    KubernetesClient,
+)
 
 
 class TestKubernetesClient(unittest.TestCase):
@@ -23,6 +29,7 @@ class TestKubernetesClient(unittest.TestCase):
 
         self.k8s_client = KubernetesClient()
         self.k8s_client.api = mock.Mock(spec=client.AppsV1Api)
+        self.k8s_client.core_api = mock.Mock(spec=client.CoreV1Api)
 
         # Create test deployments
         self.test_deployments = [
@@ -45,8 +52,10 @@ class TestKubernetesClient(unittest.TestCase):
         """
         deployment = mock.Mock(spec=V1Deployment)
         deployment.metadata = V1ObjectMeta(
-            name=name, namespace=namespace, annotations=annotations)
+            name=name, namespace=namespace, annotations=annotations, uid=f"uid-{name}")
         deployment.spec = V1DeploymentSpec(replicas=replicas)
+        deployment.api_version = "apps/v1"
+        deployment.kind = "Deployment"
         return deployment
 
     def test_list_deployments_with_namespace(self):
@@ -209,6 +218,82 @@ class TestKubernetesClient(unittest.TestCase):
             namespace="default",
             body={"spec": {"replicas": 1}}
         )
+
+    def test_create_event(self):
+        """Test creating a Kubernetes event."""
+        deployment = self.test_deployments[0]
+        event_type = EVENT_TYPE_NORMAL
+        reason = "TestReason"
+        message = "Test message"
+
+        self.k8s_client.create_event(deployment, event_type, reason, message)
+
+        # Verify that create_namespaced_event was called
+        self.k8s_client.core_api.create_namespaced_event.assert_called_once()
+
+        # Get the event that was created
+        event_call = self.k8s_client.core_api.create_namespaced_event.call_args
+        event_namespace = event_call[1]["namespace"]
+        event_body = event_call[1]["body"]
+
+        # Verify event properties
+        self.assertEqual(event_namespace, deployment.metadata.namespace)
+        self.assertEqual(event_body.involved_object.name,
+                         deployment.metadata.name)
+        self.assertEqual(event_body.involved_object.namespace,
+                         deployment.metadata.namespace)
+        self.assertEqual(event_body.involved_object.uid,
+                         deployment.metadata.uid)
+        self.assertEqual(event_body.type, event_type)
+        self.assertEqual(event_body.reason, reason)
+        self.assertEqual(event_body.message, message)
+
+    def test_scale_deployment_to_zero_creates_event(self):
+        """Test that scaling a deployment to zero creates a 'Stopped' event."""
+        deployment = self.test_deployments[0]  # Has 3 replicas
+
+        # Create a spy on create_event method
+        with mock.patch.object(self.k8s_client, 'create_event') as mock_create_event:
+            self.k8s_client.scale_deployment(deployment, 0)
+
+            # Verify create_event was called with correct parameters
+            mock_create_event.assert_called_once()
+            args = mock_create_event.call_args[1]
+            self.assertEqual(args["deployment"], deployment)
+            self.assertEqual(args["event_type"], EVENT_TYPE_NORMAL)
+            self.assertEqual(args["reason"], EVENT_REASON_STOPPED)
+            self.assertIn("Scaled down deployment from 3 to 0",
+                          args["message"])
+
+    def test_scale_deployment_from_zero_creates_event(self):
+        """Test that scaling a deployment from zero creates a 'Started' event."""
+        # Create a deployment with 0 replicas
+        deployment = self._create_test_deployment(
+            "zero-deployment", "default", 0)
+
+        # Create a spy on create_event method
+        with mock.patch.object(self.k8s_client, 'create_event') as mock_create_event:
+            self.k8s_client.scale_deployment(deployment, 2)
+
+            # Verify create_event was called with correct parameters
+            mock_create_event.assert_called_once()
+            args = mock_create_event.call_args[1]
+            self.assertEqual(args["deployment"], deployment)
+            self.assertEqual(args["event_type"], EVENT_TYPE_NORMAL)
+            self.assertEqual(args["reason"], EVENT_REASON_STARTED)
+            self.assertIn("Scaled up deployment from 0 to 2", args["message"])
+
+    def test_scale_deployment_same_replicas_no_event(self):
+        """Test that scaling a deployment to same replica count doesn't create an event."""
+        deployment = self._create_test_deployment(
+            "same-replicas", "default", 2)
+
+        # Create a spy on create_event method
+        with mock.patch.object(self.k8s_client, 'create_event') as mock_create_event:
+            self.k8s_client.scale_deployment(deployment, 2)
+
+            # Verify create_event was not called
+            mock_create_event.assert_not_called()
 
 
 if __name__ == "__main__":

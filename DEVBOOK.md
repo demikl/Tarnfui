@@ -1,14 +1,12 @@
 # Tarnfui Requirements Document
 
-This program is designed to run in a Kubernetes pod and will stop the pods in the cluster where it is running during non-working hours (night and weekends). In the morning, it will restart the deployments by restoring the initial number of replicas.
+This program is designed to run in a Kubernetes pod and will stop the pods in the cluster where it is running during non-working hours (nights and weekends). In the morning, it will restart the deployments by restoring the initial number of replicas.
 
-Written in Python with typing, dependencies managed using "uv," and linting/formatting handled by "ruff."
+The program is written in Python with type annotations. Dependencies are managed using "uv," and linting/formatting is handled by "ruff."
 
-The python code should be organized into classes and method, and each class and method
-should be documented. The entrypoint should be in a `cli.py` file.
+The Python code should be organized into classes and methods, with each class and method properly documented. The entry point of the application should be in a `cli.py` file.
 
-Les dépendances python seront renseignées dans le fichier `pyproject.toml` au fur et à
-mesure des ajouts ou retraits lorsque le développement s'effectue.
+Python dependencies will be specified in the `pyproject.toml` file as they are added or removed during development.
 
 ## Development Journal and Progress Tracker
 
@@ -22,21 +20,21 @@ This file serves as a development journal and project progress tracker. Tasks ar
 ### Phase 1: Initialization and Configuration
 
 1. **Project and Development Environment Setup**
-   - ✅ Set up the project structure (src/tarnfui, tests, etc.)
-   - ✅ Configure pyproject.toml with uv and dependencies
+   - ✅ Set up the project structure (`src/tarnfui`, `tests`, etc.)
+   - ✅ Configure `pyproject.toml` with "uv" and dependencies
    - ❌ Configure the development container environment for VSCode
    - ✅ Write initial unit tests to validate the configuration
 
 2. **Kubernetes Client**
    - ✅ Write unit tests for interacting with the Kubernetes API
    - ✅ Implement a client class for the Kubernetes API
-   - ❌ Perform integration tests with a test cluster (minikube or kind)
+   - ❌ Perform integration tests with a test cluster (e.g., Minikube or Kind)
 
 ### Phase 2: Core Features
 
 1. **Detection of Working/Non-Working Hours**
    - ✅ Write unit tests for time detection logic
-   - ✅ Implement logic to detect night vs. day and weekdays vs. weekends
+   - ✅ Implement logic to detect nights vs. days and weekdays vs. weekends
    - ✅ Write parameterized tests for different time zones and configurations
 
 2. **Saving Deployment States**
@@ -63,7 +61,7 @@ This file serves as a development journal and project progress tracker. Tasks ar
 
 2. **Configurable Settings**
    - ✅ Write unit tests for the configuration system
-   - ✅ Implement a configuration system (env vars, config files, etc.)
+   - ✅ Implement a configuration system (environment variables, config files, etc.)
    - ❌ Perform integration tests with different configurations
 
 ### Phase 4: Deployment and Monitoring
@@ -95,8 +93,8 @@ This file serves as a development journal and project progress tracker. Tasks ar
 
 - Develop a web interface to visualize pod states and schedules.
 - Implement event notifications (stop/start) via webhooks.
-- Add support for more complex rules (holidays, specific schedules per namespace).
-- Integrate with monitoring solutions (Prometheus, Grafana).
+- Add support for more complex rules (e.g., holidays, specific schedules per namespace).
+- Integrate with monitoring solutions (e.g., Prometheus, Grafana).
 - Optimize performance for large clusters.
 - To optimize the management of clusters with a large number of `Deployment` resources scaled to 0, iterate over the pods in the cluster and identify which resource manages their lifecycle (e.g., by inspecting the `.metadata.owner` field). Perform the shutdown via this resource to avoid iterating over a very large number of deployments.
 

@@ -3,6 +3,9 @@
 This module handles all interactions with the Kubernetes API.
 """
 import logging
+import os
+import socket
+from datetime import datetime
 
 from kubernetes import client, config
 
@@ -10,6 +13,14 @@ logger = logging.getLogger(__name__)
 
 # Key used for storing replica count in deployment annotations
 TARNFUI_REPLICAS_ANNOTATION = "tarnfui.io/original-replicas"
+# Constants for event types
+EVENT_TYPE_NORMAL = "Normal"
+EVENT_TYPE_WARNING = "Warning"
+# Constants for event reasons
+EVENT_REASON_STOPPED = "Stopped"
+EVENT_REASON_STARTED = "Started"
+# Component name for events
+EVENT_COMPONENT = "tarnfui"
 
 
 class KubernetesClient:
@@ -34,10 +45,15 @@ class KubernetesClient:
             logger.info("Using kubeconfig configuration")
 
         self.api = client.AppsV1Api()
+        self.core_api = client.CoreV1Api()
         self.namespace = namespace
         # Dictionary to store the original replica counts for deployments that have no annotations
         # Used as a fallback for deployments that don't support annotations or in case of errors
         self.deployment_replicas: dict[str, int] = {}
+        # Get hostname for event reporting
+        self.hostname = socket.gethostname()
+        # Unique identifier for this instance
+        self.instance_id = os.environ.get("HOSTNAME", self.hostname)
 
     def list_deployments(self, namespace: str | None = None) -> list[client.V1Deployment]:
         """List all deployments in the specified namespace or all namespaces.
@@ -56,6 +72,72 @@ class KubernetesClient:
         else:
             logger.info("Listing deployments across all namespaces")
             return self.api.list_deployment_for_all_namespaces().items
+
+    def create_event(
+        self,
+        deployment: client.V1Deployment,
+        event_type: str,
+        reason: str,
+        message: str
+    ) -> None:
+        """Create a Kubernetes event for the given deployment.
+
+        Args:
+            deployment: The deployment to create an event for.
+            event_type: Type of event (Normal or Warning)
+            reason: Short reason for the event
+            message: Detailed message for the event
+        """
+        try:
+            now = datetime.utcnow()
+
+            # Create event metadata
+            metadata = client.V1ObjectMeta(
+                namespace=deployment.metadata.namespace,
+                generate_name=f"{deployment.metadata.name}-",
+            )
+
+            # Create event source
+            source = client.V1EventSource(
+                component=EVENT_COMPONENT, host=self.hostname)
+
+            # Create the involved object reference
+            involved_object = client.V1ObjectReference(
+                api_version=deployment.api_version,
+                kind=deployment.kind,
+                name=deployment.metadata.name,
+                namespace=deployment.metadata.namespace,
+                uid=deployment.metadata.uid
+            )
+
+            # Create the event
+            event = client.V1Event(
+                metadata=metadata,
+                action="Scaling",
+                count=1,
+                event_time=now.isoformat() + "Z",
+                first_timestamp=now.isoformat() + "Z",
+                last_timestamp=now.isoformat() + "Z",
+                involved_object=involved_object,
+                message=message,
+                reason=reason,
+                reporting_component=EVENT_COMPONENT,
+                reporting_instance=self.instance_id,
+                source=source,
+                type=event_type
+            )
+
+            # Create the event in the Kubernetes API
+            self.core_api.create_namespaced_event(
+                namespace=deployment.metadata.namespace,
+                body=event
+            )
+            logger.info(
+                f"Created event for deployment {deployment.metadata.namespace}/{deployment.metadata.name}: {reason}")
+
+        except Exception as e:
+            logger.warning(
+                f"Failed to create event for deployment {deployment.metadata.namespace}/{deployment.metadata.name}: {e}")
 
     def save_deployment_state(self, deployment: client.V1Deployment) -> None:
         """Save the current replica count for a deployment.
@@ -153,9 +235,30 @@ class KubernetesClient:
         logger.info(
             f"Scaling deployment {namespace}/{name} to {replicas} replicas")
 
+        current_replicas = deployment.spec.replicas
+
         # Save the current state if scaling to zero
-        if replicas == 0 and deployment.spec.replicas > 0:
+        if replicas == 0 and current_replicas > 0:
             self.save_deployment_state(deployment)
+
+            # Create a "Stopped" event
+            event_message = f"Scaled down deployment from {current_replicas} to 0 replicas by Tarnfui"
+            self.create_event(
+                deployment=deployment,
+                event_type=EVENT_TYPE_NORMAL,
+                reason=EVENT_REASON_STOPPED,
+                message=event_message
+            )
+
+        # Create a "Started" event when scaling up
+        elif replicas > 0 and current_replicas == 0:
+            event_message = f"Scaled up deployment from 0 to {replicas} replicas by Tarnfui"
+            self.create_event(
+                deployment=deployment,
+                event_type=EVENT_TYPE_NORMAL,
+                reason=EVENT_REASON_STARTED,
+                message=event_message
+            )
 
         # Apply the new scale
         self.api.patch_namespaced_deployment(
