@@ -1,5 +1,5 @@
 image:
-  repository: ghcr.io/your-org/tarnfui
+  repository: ghcr.io/{{ .Values.github.repository_owner | default "your-org" }}/tarnfui
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -12,3 +12,6 @@ resources:
   requests:
     cpu: 250m
     memory: 64Mi
+
+github:
+  repository_owner: ""

@@ -6,19 +6,49 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Build Docker image
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.13
+
+      - name: Install dependencies
         run: |
-          docker build -t ghcr.io/your-org/tarnfui:${{ github.sha }} .
-      - name: Push Docker image
+          pip install uv
+          uv sync --dev
+      
+      - name: Lint and format check
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          docker push ghcr.io/your-org/tarnfui:${{ github.sha }}
-      - name: Publish Helm chart
-        run: |
-          helm package charts/tarnfui
-          helm repo index .
+          ruff check .
+          ruff format --check .
+
+      - name: Run tests
+        run: pytest
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/tarnfui:dev
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

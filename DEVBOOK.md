@@ -74,23 +74,27 @@ This file serves as a development journal and project progress tracker. Tasks ar
    - ❌ Benchmark performance with different cluster sizes
 
 3. **Packaging and Deployment**
-   - ❌ Create and test the Dockerfile
-   - ❌ Create Helm charts
-   - ❌ Configure CI/CD with GitHub Actions
+   - ✅ Create and test the Dockerfile
+   - ✅ Create Helm charts
+   - ✅ Configure CI/CD with GitHub Actions
+   - ✅ Set up automated Docker image publication to GHCR
+   - ✅ Set up automated Helm chart publication to GitHub Pages
 
 4. **Documentation**
-   - ❌ Complete the README
+   - 🟡 Complete the README
    - ❌ Write technical documentation
    - ❌ Document operational procedures
 
 ## Potential Improvements
 
-- Web interface to visualize pod states and schedules
-- Event notifications (stop/start) via webhooks
-- Support for more complex rules (holidays, specific schedules per namespace)
-- Integration with monitoring solutions (Prometheus, Grafana)
-- Performance optimization for large clusters
+- Develop a web interface to visualize pod states and schedules.
+- Implement event notifications (stop/start) via webhooks.
+- Add support for more complex rules (holidays, specific schedules per namespace).
+- Integrate with monitoring solutions (Prometheus, Grafana).
+- Optimize performance for large clusters.
+- To optimize the management of clusters with a large number of `Deployment` resources scaled to 0, iterate over the pods in the cluster and identify which resource manages their lifecycle (e.g., by inspecting the `.metadata.owner` field). Perform the shutdown via this resource to avoid iterating over a very large number of deployments.
 
 ## To Do
 
-- [ ] Regularly update this file to reflect progress.
+- ✅ Set up CI/CD workflows for automated releases.
+- ❌ Regularly update this file to reflect progress.
