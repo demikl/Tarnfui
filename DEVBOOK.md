@@ -7,6 +7,9 @@ Written in Python with typing, dependencies managed using "uv," and linting/form
 The python code should be organized into classes and method, and each class and method
 should be documented. The entrypoint should be in a `cli.py` file.
 
+Les dépendances python seront renseignées dans le fichier `pyproject.toml` au fur et à
+mesure des ajouts ou retraits lorsque le développement s'effectue.
+
 ## Development Journal and Progress Tracker
 
 This file serves as a development journal and project progress tracker. Tasks are tracked using the following emoji-based system:

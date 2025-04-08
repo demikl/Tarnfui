@@ -24,6 +24,8 @@ spec:
           value: {{ .Values.tarnfui.startupTime | quote }}
         - name: TARNFUI_ACTIVE_DAYS
           value: {{ .Values.tarnfui.activeDays | quote }}
+        - name: TARNFUI_TIMEZONE
+          value: {{ .Values.tarnfui.timezone | quote }}
         - name: TARNFUI_RECONCILIATION_INTERVAL
           value: {{ .Values.tarnfui.reconciliationInterval | quote }}
         {{- if .Values.tarnfui.namespace }}

@@ -22,9 +22,11 @@ tarnfui:
   shutdownTime: "19:00"
   # Time to start up deployments in 24-hour format (HH:MM)
   startupTime: "07:00"
-  # List of days when the cluster should be active (0-6, where 0 is Monday)
-  # Default is 0,1,2,3,4 (Monday to Friday)
-  activeDays: "0,1,2,3,4"
+  # Timezone for time calculations (e.g., 'Europe/Paris', 'America/New_York')
+  timezone: "UTC"
+  # List of active days using English abbreviations (mon,tue,wed,thu,fri,sat,sun)
+  # Default is mon,tue,wed,thu,fri (Monday to Friday)
+  activeDays: "mon,tue,wed,thu,fri"
   # Reconciliation interval in seconds
   reconciliationInterval: 60
   # Optional namespace to limit scope (leave blank for all namespaces)

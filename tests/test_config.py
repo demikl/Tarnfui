@@ -4,7 +4,49 @@ import os
 import unittest
 from unittest import mock
 
-from tarnfui.config import TarnfuiConfig
+from tarnfui.config import TarnfuiConfig, Weekday
+
+
+class TestWeekday(unittest.TestCase):
+    """Test cases for the Weekday enum."""
+
+    def test_weekday_values(self):
+        """Test that Weekday enum values are correct."""
+        self.assertEqual(Weekday.MON.value, "mon")
+        self.assertEqual(Weekday.TUE.value, "tue")
+        self.assertEqual(Weekday.WED.value, "wed")
+        self.assertEqual(Weekday.THU.value, "thu")
+        self.assertEqual(Weekday.FRI.value, "fri")
+        self.assertEqual(Weekday.SAT.value, "sat")
+        self.assertEqual(Weekday.SUN.value, "sun")
+
+    def test_to_integer(self):
+        """Test conversion from Weekday to integer."""
+        self.assertEqual(Weekday.to_integer(Weekday.MON), 0)
+        self.assertEqual(Weekday.to_integer(Weekday.TUE), 1)
+        self.assertEqual(Weekday.to_integer(Weekday.WED), 2)
+        self.assertEqual(Weekday.to_integer(Weekday.THU), 3)
+        self.assertEqual(Weekday.to_integer(Weekday.FRI), 4)
+        self.assertEqual(Weekday.to_integer(Weekday.SAT), 5)
+        self.assertEqual(Weekday.to_integer(Weekday.SUN), 6)
+
+        # Test string conversion
+        self.assertEqual(Weekday.to_integer("mon"), 0)
+        self.assertEqual(Weekday.to_integer("tue"), 1)
+
+    def test_from_integer(self):
+        """Test conversion from integer to Weekday."""
+        self.assertEqual(Weekday.from_integer(0), Weekday.MON)
+        self.assertEqual(Weekday.from_integer(1), Weekday.TUE)
+        self.assertEqual(Weekday.from_integer(2), Weekday.WED)
+        self.assertEqual(Weekday.from_integer(3), Weekday.THU)
+        self.assertEqual(Weekday.from_integer(4), Weekday.FRI)
+        self.assertEqual(Weekday.from_integer(5), Weekday.SAT)
+        self.assertEqual(Weekday.from_integer(6), Weekday.SUN)
+
+        # Test invalid value
+        with self.assertRaises(ValueError):
+            Weekday.from_integer(7)
 
 
 class TestTarnfuiConfig(unittest.TestCase):
@@ -15,7 +57,9 @@ class TestTarnfuiConfig(unittest.TestCase):
         config = TarnfuiConfig()
         self.assertEqual(config.shutdown_time, "19:00")
         self.assertEqual(config.startup_time, "07:00")
-        self.assertEqual(config.active_days, [0, 1, 2, 3, 4])
+        self.assertEqual(config.active_days, [
+                         Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI])
+        self.assertEqual(config.timezone, "UTC")
         self.assertEqual(config.reconciliation_interval, 60)
         self.assertIsNone(config.namespace)
 
@@ -24,7 +68,8 @@ class TestTarnfuiConfig(unittest.TestCase):
         with mock.patch.dict(os.environ, {
             "TARNFUI_SHUTDOWN_TIME": "20:00",
             "TARNFUI_STARTUP_TIME": "08:30",
-            "TARNFUI_ACTIVE_DAYS": "1,3,5",
+            "TARNFUI_ACTIVE_DAYS": "mon,wed,fri",
+            "TARNFUI_TIMEZONE": "Europe/Paris",
             "TARNFUI_RECONCILIATION_INTERVAL": "30",
             "TARNFUI_NAMESPACE": "test-ns"
         }):
@@ -32,7 +77,9 @@ class TestTarnfuiConfig(unittest.TestCase):
 
             self.assertEqual(config.shutdown_time, "20:00")
             self.assertEqual(config.startup_time, "08:30")
-            self.assertEqual(config.active_days, [1, 3, 5])
+            self.assertEqual(config.active_days, [
+                             Weekday.MON, Weekday.WED, Weekday.FRI])
+            self.assertEqual(config.timezone, "Europe/Paris")
             self.assertEqual(config.reconciliation_interval, 30)
             self.assertEqual(config.namespace, "test-ns")
 
@@ -53,18 +100,16 @@ class TestTarnfuiConfig(unittest.TestCase):
         with self.assertRaises(ValueError):
             TarnfuiConfig(shutdown_time="19-00")
 
-    def test_active_days_validation(self):
-        """Test that active days validation works correctly."""
-        # Valid days should not raise exceptions
-        TarnfuiConfig(active_days=[0, 1, 2, 3, 4, 5, 6])
+    def test_timezone_validation(self):
+        """Test that timezone validation works correctly."""
+        # Valid timezones should not raise exceptions
+        TarnfuiConfig(timezone="UTC")
+        TarnfuiConfig(timezone="Europe/Paris")
+        TarnfuiConfig(timezone="America/New_York")
 
-        # Invalid day (negative)
+        # Invalid timezone
         with self.assertRaises(ValueError):
-            TarnfuiConfig(active_days=[-1, 1, 2])
-
-        # Invalid day (too large)
-        with self.assertRaises(ValueError):
-            TarnfuiConfig(active_days=[1, 7, 2])
+            TarnfuiConfig(timezone="Invalid/Timezone")
 
 
 if __name__ == "__main__":

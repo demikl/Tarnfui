@@ -6,7 +6,7 @@ import argparse
 import logging
 import sys
 
-from tarnfui.config import TarnfuiConfig
+from tarnfui.config import TarnfuiConfig, Weekday
 from tarnfui.kubernetes import KubernetesClient
 from tarnfui.scheduler import Scheduler
 
@@ -64,7 +64,12 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
 
     parser.add_argument(
         "--active-days",
-        help="Comma-separated list of active days (0-6, where 0 is Monday, overrides TARNFUI_ACTIVE_DAYS)"
+        help="Comma-separated list of active days (mon,tue,wed,thu,fri,sat,sun format, overrides TARNFUI_ACTIVE_DAYS)"
+    )
+
+    parser.add_argument(
+        "--timezone",
+        help="Timezone for time calculations (e.g. 'Europe/Paris', overrides TARNFUI_TIMEZONE)"
     )
 
     parser.add_argument(
@@ -107,19 +112,23 @@ def main(args: list[str] | None = None) -> int:
         config.startup_time = parsed_args.startup_time
     if parsed_args.shutdown_time:
         config.shutdown_time = parsed_args.shutdown_time
+    if parsed_args.timezone:
+        config.timezone = parsed_args.timezone
     if parsed_args.active_days:
         try:
-            config.active_days = [int(day)
-                                  for day in parsed_args.active_days.split(",")]
-        except ValueError:
-            logger.error(
-                "Invalid active days format, must be comma-separated integers")
+            days = [Weekday(day.strip().lower())
+                    for day in parsed_args.active_days.split(",")]
+            config.active_days = days
+        except ValueError as e:
+            logger.error(f"Invalid active days format: {e}")
             return 1
     if parsed_args.interval:
         config.reconciliation_interval = parsed_args.interval
 
     logger.info(f"Configuration: startup={config.startup_time}, shutdown={config.shutdown_time}, "
-                f"active_days={config.active_days}, interval={config.reconciliation_interval}s, "
+                f"timezone={config.timezone}, "
+                f"active_days={[day.value for day in config.active_days]}, "
+                f"interval={config.reconciliation_interval}s, "
                 f"namespace={config.namespace or 'all'}")
 
     # Create Kubernetes client

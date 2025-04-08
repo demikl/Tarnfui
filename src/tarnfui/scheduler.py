@@ -6,7 +6,9 @@ import datetime
 import logging
 import time
 
-from tarnfui.config import TarnfuiConfig
+import pytz
+
+from tarnfui.config import TarnfuiConfig, Weekday
 from tarnfui.kubernetes import KubernetesClient
 
 logger = logging.getLogger(__name__)
@@ -27,6 +29,7 @@ class Scheduler:
         """
         self.config = config
         self.kubernetes_client = kubernetes_client
+        self.timezone = pytz.timezone(config.timezone)
 
     def _parse_time(self, time_str: str) -> datetime.time:
         """Parse a time string into a datetime.time object.
@@ -40,19 +43,32 @@ class Scheduler:
         hour, minute = map(int, time_str.split(":"))
         return datetime.time(hour=hour, minute=minute)
 
+    def get_current_datetime(self) -> datetime.datetime:
+        """Get the current datetime in the configured timezone.
+
+        Returns:
+            Current datetime in the configured timezone.
+        """
+        return datetime.datetime.now(self.timezone)
+
     def should_be_active(self) -> bool:
         """Determine if the cluster should be active based on current time and day.
 
         Returns:
             True if the cluster should be active, False otherwise.
         """
-        now = datetime.datetime.now()
-        current_day = now.weekday()  # 0 is Monday, 6 is Sunday
-        current_time = now.time()
+        now = self.get_current_datetime()
+        current_day_num = now.weekday()  # 0 is Monday, 6 is Sunday
+        current_time = now.time().replace(tzinfo=None)  # Remove tzinfo for comparison
+
+        # Convert active_days enum values to integers for comparison
+        active_day_nums = [Weekday.to_integer(
+            day) for day in self.config.active_days]
 
         # Check if today is an active day
-        if current_day not in self.config.active_days:
-            logger.info(f"Today (day {current_day}) is not an active day")
+        if current_day_num not in active_day_nums:
+            logger.info(
+                f"Today (day {Weekday.from_integer(current_day_num)}) is not an active day")
             return False
 
         # Parse configured times
@@ -64,18 +80,18 @@ class Scheduler:
         if shutdown_time < startup_time:
             # Special case: shutdown is before startup (e.g., 19:00 to 07:00)
             if startup_time <= current_time < shutdown_time:
-                logger.info("Current time is within active hours")
+                logger.info(f"Current time {now} is within active hours")
                 return True
             else:
-                logger.info("Current time is outside active hours")
+                logger.info(f"Current time {now} is outside active hours")
                 return False
         else:
             # Special case: shutdown is after startup (e.g., 07:00 to 19:00)
             if shutdown_time <= current_time or current_time < startup_time:
-                logger.info("Current time is outside active hours")
+                logger.info(f"Current time {now} is outside active hours")
                 return False
             else:
-                logger.info("Current time is within active hours")
+                logger.info(f"Current time {now} is within active hours")
                 return True
 
     def reconcile(self) -> None:
@@ -101,6 +117,11 @@ class Scheduler:
         """
         logger.info(
             f"Starting reconciliation loop with interval {self.config.reconciliation_interval} seconds")
+        logger.info(f"Using timezone: {self.config.timezone}")
+        logger.info(
+            f"Active days: {', '.join(day.value for day in self.config.active_days)}")
+        logger.info(f"Startup time: {self.config.startup_time}")
+        logger.info(f"Shutdown time: {self.config.shutdown_time}")
 
         try:
             while True:
