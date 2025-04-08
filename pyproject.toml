@@ -5,12 +5,12 @@ description = "Kubernetes cost and carbon energy saver that selectively shutdown
 readme = "README.md"
 license = "MIT"
 requires-python = "~=3.13.0"
+dependencies = ["kubernetes", "pydantic", "schedule", "pytz"]
 
 [project.scripts]
 tarnfui = "tarnfui.cli:main"
 
 [tool.uv]
-dependencies = ["kubernetes", "pydantic", "schedule", "pytz"]
 dev-dependencies = ["ruff", "pytest"]
 
 [tool.ruff]
