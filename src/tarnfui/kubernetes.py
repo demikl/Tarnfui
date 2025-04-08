@@ -5,7 +5,7 @@ This module handles all interactions with the Kubernetes API.
 import logging
 import os
 import socket
-from datetime import datetime
+from datetime import UTC, datetime
 
 from kubernetes import client, config
 
@@ -89,48 +89,39 @@ class KubernetesClient:
             message: Detailed message for the event
         """
         try:
-            now = datetime.utcnow()
+            # Use datetime with timezone info instead of utcnow
+            now = datetime.now(UTC)
 
-            # Create event metadata
-            metadata = client.V1ObjectMeta(
-                namespace=deployment.metadata.namespace,
-                generate_name=f"{deployment.metadata.name}-",
-            )
-
-            # Create event source
-            source = client.V1EventSource(
-                component=EVENT_COMPONENT, host=self.hostname)
-
-            # Create the involved object reference
-            involved_object = client.V1ObjectReference(
-                api_version=deployment.api_version,
-                kind=deployment.kind,
-                name=deployment.metadata.name,
-                namespace=deployment.metadata.namespace,
-                uid=deployment.metadata.uid
-            )
-
-            # Create the event
-            event = client.V1Event(
-                metadata=metadata,
-                action="Scaling",
-                count=1,
-                event_time=now.isoformat() + "Z",
-                first_timestamp=now.isoformat() + "Z",
-                last_timestamp=now.isoformat() + "Z",
-                involved_object=involved_object,
-                message=message,
-                reason=reason,
-                reporting_component=EVENT_COMPONENT,
-                reporting_instance=self.instance_id,
-                source=source,
-                type=event_type
-            )
+            # Create the core event object - simpler approach just using what we need
+            event_body = {
+                "metadata": {
+                    "generate_name": f"{deployment.metadata.name}-",
+                    "namespace": deployment.metadata.namespace
+                },
+                "reason": reason,
+                "message": message,
+                "type": event_type,
+                "source": {
+                    "component": EVENT_COMPONENT,
+                    "host": self.hostname
+                },
+                "involvedObject": {
+                    "kind": deployment.kind,
+                    "name": deployment.metadata.name,
+                    "namespace": deployment.metadata.namespace,
+                    "uid": deployment.metadata.uid,
+                    "apiVersion": deployment.api_version
+                },
+                "firstTimestamp": now.isoformat(),
+                "lastTimestamp": now.isoformat(),
+                "count": 1,
+                "action": "Scaling"
+            }
 
             # Create the event in the Kubernetes API
             self.core_api.create_namespaced_event(
                 namespace=deployment.metadata.namespace,
-                body=event
+                body=event_body
             )
             logger.info(
                 f"Created event for deployment {deployment.metadata.namespace}/{deployment.metadata.name}: {reason}")
@@ -302,6 +293,7 @@ class KubernetesClient:
                 logger.info(
                     f"Restored deployment {deployment.metadata.namespace}/{deployment.metadata.name} to {original_replicas} replicas")
             else:
-                # Emit a debug log if no saved state is found
-                logger.debug(
-                    f"No original replica count found for {deployment.metadata.namespace}/{deployment.metadata.name}. Skipping rescaling.")
+                # Default to scaling to 1 replica if no saved state is found
+                self.scale_deployment(deployment, 1)
+                logger.info(
+                    f"Defaulted deployment {deployment.metadata.namespace}/{deployment.metadata.name} to 1 replica")

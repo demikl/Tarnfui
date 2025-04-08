@@ -132,3 +132,17 @@ class Scheduler:
             logger.info("Reconciliation loop interrupted, shutting down")
         except Exception as e:
             logger.exception(f"Error in reconciliation loop: {str(e)}")
+
+    def ensure_naive_datetime(self, dt: datetime.datetime) -> datetime.datetime:
+        """Ensure the datetime object is naive before localizing.
+
+        Args:
+            dt: The datetime object to check.
+
+        Returns:
+            The naive datetime object.
+        """
+        if dt.tzinfo is not None:
+            dt = dt.replace(tzinfo=None)
+        dt_utc = pytz.UTC.localize(dt)
+        return dt
