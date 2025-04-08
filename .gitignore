@@ -171,3 +171,6 @@ cython_debug/
 
 # macOS
 .DS_Store
+
+# Ensure the script is ignored by Git to prevent it from being committed.
+.devcontainer/setup-local-git.sh

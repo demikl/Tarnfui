@@ -1,3 +1,14 @@
+[project]
+name = "tarnfui"
+version = "0.1.0"
+description = "Kubernetes cost and carbon energy saver that selectively shutdown workloads during non-working hours on staging clusters"
+readme = "README.md"
+license = "MIT"
+requires-python = "~=3.13.0"
+
+[project.scripts]
+tarnfui = "tarnfui:main"
+
 [tool.uv]
 dependencies = []
 dev-dependencies = ["ruff", "pytest"]
@@ -17,5 +28,5 @@ extend-select = [
 ]
 
 [build-system]
-requires = ["uv"]
-build-backend = "uv.build"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

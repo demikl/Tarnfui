@@ -18,6 +18,11 @@
 
 ## Additional Guidelines
 
-- Refer to the requirements document located at `#file:Design.md` for implementation progress updates.
+- Refer to the requirements document located at `#file:DEVBOOK.md` for implementation progress updates. This file will serve as a development journal and project progress tracker.
+- Use an emoji-based system to track the status of tasks:
+  - ✅ Completed
+  - 🟡 In Progress
+  - ❌ Not Started
+- Update `DEVBOOK.md` regularly to reflect the current state of the project.
 - **Testing**: Unit tests are required for every feature.
 - **Performance**: Write memory-efficient code, especially when handling a large number of objects or resources.
