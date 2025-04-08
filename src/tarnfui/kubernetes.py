@@ -302,7 +302,6 @@ class KubernetesClient:
                 logger.info(
                     f"Restored deployment {deployment.metadata.namespace}/{deployment.metadata.name} to {original_replicas} replicas")
             else:
-                # Default to 1 replica if no saved state is found
-                logger.warning(
-                    f"No original replica count found for {deployment.metadata.namespace}/{deployment.metadata.name}, defaulting to 1")
-                self.scale_deployment(deployment, 1)
+                # Emit a debug log if no saved state is found
+                logger.debug(
+                    f"No original replica count found for {deployment.metadata.namespace}/{deployment.metadata.name}. Skipping rescaling.")
