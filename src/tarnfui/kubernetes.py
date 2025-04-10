@@ -113,6 +113,8 @@ class KubernetesClient:
                 reporting_instance=self.hostname,
                 action="Scaling",
                 regarding=client.V1ObjectReference(
+                    api_version="apps/v1",
+                    kind="Deployment",
                     name=deployment.metadata.name,
                     namespace=deployment.metadata.namespace,
                     uid=deployment.metadata.uid
