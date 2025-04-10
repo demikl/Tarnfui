@@ -53,7 +53,7 @@ class KubernetesClient:
                     "Kubernetes configuration error: kubeconfig file is missing or invalid.") from e
 
         self.api = client.AppsV1Api()
-        self.core_api = client.CoreV1Api()
+        self.events_api = client.EventsV1Api()
         self.namespace = namespace
         # Dictionary to store the original replica counts for deployments that have no annotations
         # Used as a fallback for deployments that don't support annotations or in case of errors
@@ -100,36 +100,30 @@ class KubernetesClient:
             # Use datetime with timezone info instead of utcnow
             now = datetime.now(UTC)
 
-            # Create the core event object - simpler approach just using what we need
-            event_body = {
-                "metadata": {
-                    "generate_name": f"{deployment.metadata.name}-",
-                    "namespace": deployment.metadata.namespace
-                },
-                "reason": reason,
-                "message": message,
-                "type": event_type,
-                "source": {
-                    "component": EVENT_COMPONENT,
-                    "host": self.hostname
-                },
-                "involvedObject": {
-                    "kind": deployment.kind,
-                    "name": deployment.metadata.name,
-                    "namespace": deployment.metadata.namespace,
-                    "uid": deployment.metadata.uid,
-                    "apiVersion": deployment.api_version
-                },
-                "firstTimestamp": now.isoformat(),
-                "lastTimestamp": now.isoformat(),
-                "count": 1,
-                "action": "Scaling"
-            }
+            # Initialize the event body
+            body = client.EventsV1Event(
+                metadata=client.V1ObjectMeta(
+                    generate_name=f"{deployment.metadata.name}-",
+                    namespace=deployment.metadata.namespace
+                ),
+                reason=reason,
+                note=message,
+                type=event_type,
+                reporting_controller=EVENT_COMPONENT,
+                reporting_instance=self.hostname,
+                action="Scaling",
+                regarding=client.V1ObjectReference(
+                    name=deployment.metadata.name,
+                    namespace=deployment.metadata.namespace,
+                    uid=deployment.metadata.uid
+                ),
+                event_time=now
+            )
 
             # Create the event in the Kubernetes API
-            self.core_api.create_namespaced_event(
+            self.events_api.create_namespaced_event(
                 namespace=deployment.metadata.namespace,
-                body=event_body
+                body=body
             )
             logger.info(
                 f"Created event for deployment {deployment.metadata.namespace}/{deployment.metadata.name}: {reason}")
@@ -282,6 +276,9 @@ class KubernetesClient:
                 continue
 
             self.scale_deployment(deployment, 0)
+
+        logger.info(
+            f"Completed processing {len(deployments)} deployments.")
 
     def start_deployments(self, namespace: str | None = None) -> None:
         """Restore all deployments to their original replica counts.

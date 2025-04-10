@@ -117,15 +117,6 @@ def main(args: list[str] | None = None) -> int:
         if parsed_args.timezone:
             config.timezone = parsed_args.timezone
 
-        # Revalidate startup and shutdown times with the updated timezone
-        config.startup_time = TarnfuiConfig.validate_time_format(
-            config.startup_time, {"timezone": config.timezone}, "startup_time"
-        )
-        config.shutdown_time = TarnfuiConfig.validate_time_format(
-            config.shutdown_time, {
-                "timezone": config.timezone}, "shutdown_time"
-        )
-
         if parsed_args.active_days:
             try:
                 days = [Weekday(day.strip().lower())
