@@ -40,9 +40,17 @@ class KubernetesClient:
             config.load_incluster_config()
             logger.info("Using in-cluster configuration")
         except config.ConfigException:
-            # Fall back to kubeconfig for local development
-            config.load_kube_config()
-            logger.info("Using kubeconfig configuration")
+            try:
+                # Fall back to kubeconfig for local development
+                config.load_kube_config()
+                logger.info("Using kubeconfig configuration")
+            except config.ConfigException as e:
+                # Provide a clear error message if kubeconfig is not available or invalid
+                logger.error(
+                    "Failed to load Kubernetes configuration. Ensure that the kubeconfig file is available and valid."
+                )
+                raise RuntimeError(
+                    "Kubernetes configuration error: kubeconfig file is missing or invalid.") from e
 
         self.api = client.AppsV1Api()
         self.core_api = client.CoreV1Api()
@@ -128,7 +136,9 @@ class KubernetesClient:
 
         except Exception as e:
             logger.warning(
-                f"Failed to create event for deployment {deployment.metadata.namespace}/{deployment.metadata.name}: {e}")
+                f"Failed to create event for deployment {deployment.metadata.namespace}/"
+                f"{deployment.metadata.name}: {e}"
+            )
 
     def save_deployment_state(self, deployment: client.V1Deployment) -> None:
         """Save the current replica count for a deployment.
@@ -291,9 +301,14 @@ class KubernetesClient:
             if original_replicas is not None and original_replicas > 0:
                 self.scale_deployment(deployment, original_replicas)
                 logger.info(
-                    f"Restored deployment {deployment.metadata.namespace}/{deployment.metadata.name} to {original_replicas} replicas")
+                    f"Restored deployment {deployment.metadata.namespace}/"
+                    f"{deployment.metadata.name} to {original_replicas} replicas"
+                )
             else:
                 # Default to scaling to 1 replica if no saved state is found
                 self.scale_deployment(deployment, 1)
                 logger.info(
                     f"Defaulted deployment {deployment.metadata.namespace}/{deployment.metadata.name} to 1 replica")
+
+        logger.info(
+            f"Completed processing {len(deployments)} deployments.")
