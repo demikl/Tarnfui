@@ -29,7 +29,7 @@ class TestKubernetesClient(unittest.TestCase):
         mock_load_kube_config.return_value = None
         self.k8s_client = KubernetesClient()
         self.k8s_client.api = mock.Mock(spec=client.AppsV1Api)
-        self.k8s_client.core_api = mock.Mock(spec=client.CoreV1Api)
+        self.k8s_client.events_api = mock.Mock(spec=client.EventsV1Api)
         # Create test deployments
         self.test_deployments = [
             self._create_test_deployment("deployment1", "default", 3),
@@ -232,24 +232,24 @@ class TestKubernetesClient(unittest.TestCase):
         self.k8s_client.create_event(deployment, event_type, reason, message)
 
         # Verify that create_namespaced_event was called
-        self.k8s_client.core_api.create_namespaced_event.assert_called_once()
+        self.k8s_client.events_api.create_namespaced_event.assert_called_once()
 
         # Get the event that was created
-        event_call = self.k8s_client.core_api.create_namespaced_event.call_args
+        event_call = self.k8s_client.events_api.create_namespaced_event.call_args
         event_namespace = event_call[1]["namespace"]
         event_body = event_call[1]["body"]
 
         # Verify event properties - using dictionary access for the adapted implementation
         self.assertEqual(event_namespace, deployment.metadata.namespace)
-        self.assertEqual(event_body["involvedObject"]
-                         ["name"], deployment.metadata.name)
-        self.assertEqual(event_body["involvedObject"]
-                         ["namespace"], deployment.metadata.namespace)
-        self.assertEqual(event_body["involvedObject"]
-                         ["uid"], deployment.metadata.uid)
-        self.assertEqual(event_body["type"], event_type)
-        self.assertEqual(event_body["reason"], reason)
-        self.assertEqual(event_body["message"], message)
+        self.assertEqual(event_body.regarding.api_version, "apps/v1")
+        self.assertEqual(event_body.regarding.kind, "Deployment")
+        self.assertEqual(event_body.regarding.name, deployment.metadata.name)
+        self.assertEqual(event_body.regarding.namespace,
+                         deployment.metadata.namespace)
+        self.assertEqual(event_body.regarding.uid, deployment.metadata.uid)
+        self.assertEqual(event_body.type, event_type)
+        self.assertEqual(event_body.reason, reason)
+        self.assertEqual(event_body.note, message)
 
     def test_scale_deployment_to_zero_creates_event(self):
         """Test that scaling a deployment to zero creates a 'Stopped' event."""
