@@ -2,9 +2,11 @@
 
 ## Project Structure
 
-- **Source Code**: All Python source code is located in `/src/tarnfui/`.
+- **Source Code**: All Python source code is located in `/src/tarnfui/`. Execute it with
+  "uv run tarnfui".
 - **Helm Chart**: The Helm chart is located in `/chart/tarnfui/`.
-- **Tests**: All tests are located in `/tests/`.
+- **Tests**: All tests are located in `/tests/`. Execute them with this terminal
+  command: "source .venv/bin/activate && pytest"
 
 ## GitHub Actions
 
