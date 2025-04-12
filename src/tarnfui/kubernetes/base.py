@@ -139,7 +139,8 @@ class KubernetesResource(Generic[T], abc.ABC):
         namespace = self.get_resource_namespace(resource)
 
         if replicas <= 0:
-            logger.debug(f"Skipping save for {self.RESOURCE_KIND} {namespace}/{name} with 0 replicas")
+            logger.debug(
+                f"Skipping save for {self.RESOURCE_KIND} {namespace}/{name} with 0 replicas")
             return
 
         key = self.get_resource_key(resource)
@@ -149,10 +150,13 @@ class KubernetesResource(Generic[T], abc.ABC):
 
         try:
             # Try to save the state in an annotation
-            self._save_annotation(resource, self.REPLICA_ANNOTATION, str(replicas))
-            logger.debug(f"Saved state for {self.RESOURCE_KIND} {key} in annotation: {replicas} replicas")
+            self._save_annotation(
+                resource, self.REPLICA_ANNOTATION, str(replicas))
+            logger.debug(
+                f"Saved state for {self.RESOURCE_KIND} {key} in annotation: {replicas} replicas")
         except Exception as e:
-            logger.warning(f"Failed to save state in annotation for {self.RESOURCE_KIND} {key}: {e}")
+            logger.warning(
+                f"Failed to save state in annotation for {self.RESOURCE_KIND} {key}: {e}")
             logger.info(f"State saved in memory only: {replicas} replicas")
 
     @abc.abstractmethod
@@ -182,21 +186,26 @@ class KubernetesResource(Generic[T], abc.ABC):
         # Try from memory cache first to avoid an API call
         if key in self._memory_state:
             replicas = self._memory_state[key]
-            logger.debug(f"Retrieved original replicas from memory cache for {key}: {replicas}")
+            logger.debug(
+                f"Retrieved original replicas from memory cache for {key}: {replicas}")
             return replicas
 
         # Try to get from annotations
         try:
-            annotation_value = self._get_annotation(resource, self.REPLICA_ANNOTATION)
+            annotation_value = self._get_annotation(
+                resource, self.REPLICA_ANNOTATION)
             if annotation_value:
                 try:
                     replicas = int(annotation_value)
-                    logger.debug(f"Retrieved original replicas from annotation for {key}: {replicas}")
+                    logger.debug(
+                        f"Retrieved original replicas from annotation for {key}: {replicas}")
                     return replicas
                 except (ValueError, TypeError) as e:
-                    logger.warning(f"Invalid replica count in annotation for {key}: {e}")
+                    logger.warning(
+                        f"Invalid replica count in annotation for {key}: {e}")
         except Exception as e:
-            logger.warning(f"Error getting annotations for {self.RESOURCE_KIND} {key}: {e}")
+            logger.warning(
+                f"Error getting annotations for {self.RESOURCE_KIND} {key}: {e}")
 
         logger.warning(f"No saved state found for {self.RESOURCE_KIND} {key}")
         return None
@@ -227,7 +236,8 @@ class KubernetesResource(Generic[T], abc.ABC):
         namespace = self.get_resource_namespace(resource)
         current_replicas = self.get_replicas(resource)
 
-        logger.debug(f"Scaling {self.RESOURCE_KIND} {namespace}/{name} to {replicas} replicas")
+        logger.debug(
+            f"Scaling {self.RESOURCE_KIND} {namespace}/{name} to {replicas} replicas")
 
         # Save the current state if scaling to zero
         if replicas == 0 and current_replicas > 0:
@@ -292,7 +302,8 @@ class KubernetesResource(Generic[T], abc.ABC):
                 logger.info(f"Stopped {self.RESOURCE_KIND} {namespace}/{name}")
 
             logger.info(
-                f"Completed processing {total_processed} {self.RESOURCE_KIND}s. Stopped {total_stopped} {self.RESOURCE_KIND}s."
+                f"Completed processing {total_processed} {self.RESOURCE_KIND}s. "
+                f"Stopped {total_stopped} {self.RESOURCE_KIND}s."
             )
 
         except Exception as e:
@@ -328,10 +339,12 @@ class KubernetesResource(Generic[T], abc.ABC):
                     total_started += 1
                     name = self.get_resource_name(resource)
                     namespace = self.get_resource_namespace(resource)
-                    logger.info(f"Restored {self.RESOURCE_KIND} {namespace}/{name} to {original_replicas} replicas")
+                    logger.info(
+                        f"Restored {self.RESOURCE_KIND} {namespace}/{name} to {original_replicas} replicas")
 
             logger.info(
-                f"Completed processing {total_processed} {self.RESOURCE_KIND}s. Started {total_started} {self.RESOURCE_KIND}s."
+                f"Completed processing {total_processed} {self.RESOURCE_KIND}s. "
+                f"Started {total_started} {self.RESOURCE_KIND}s."
             )
 
         except Exception as e:
