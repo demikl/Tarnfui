@@ -17,13 +17,11 @@ class TestScheduler(unittest.TestCase):
         self.config = TarnfuiConfig(
             shutdown_time="19:00",
             startup_time="07:00",
-            active_days=[Weekday.MON, Weekday.TUE,
-                         Weekday.WED, Weekday.THU, Weekday.FRI],
-            timezone="UTC"
+            active_days=[Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI],
+            timezone="UTC",
         )
         self.k8s_client = mock.Mock(spec=KubernetesClient)
-        self.scheduler = Scheduler(
-            config=self.config, kubernetes_client=self.k8s_client)
+        self.scheduler = Scheduler(config=self.config, kubernetes_client=self.k8s_client)
 
     def test_parse_time(self):
         """Test that time parsing works correctly."""
@@ -91,9 +89,8 @@ class TestScheduler(unittest.TestCase):
         config = TarnfuiConfig(
             shutdown_time="19:00",
             startup_time="07:00",
-            active_days=[Weekday.MON, Weekday.TUE,
-                         Weekday.WED, Weekday.THU, Weekday.FRI],
-            timezone="Europe/Paris"
+            active_days=[Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI],
+            timezone="Europe/Paris",
         )
         scheduler = Scheduler(config=config, kubernetes_client=self.k8s_client)
 

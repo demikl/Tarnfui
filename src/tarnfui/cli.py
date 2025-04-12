@@ -40,11 +40,9 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         ),
     )
 
-    parser.add_argument("-v", "--verbose", action="store_true",
-                        help="Enable verbose logging")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
 
-    parser.add_argument(
-        "--namespace", help="Specific namespace to manage (overrides TARNFUI_NAMESPACE)")
+    parser.add_argument("--namespace", help="Specific namespace to manage (overrides TARNFUI_NAMESPACE)")
 
     parser.add_argument(
         "--startup-time", help="Time to start deployments (HH:MM format, overrides TARNFUI_STARTUP_TIME)"
@@ -67,8 +65,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         "--interval", type=int, help="Reconciliation interval in seconds (overrides TARNFUI_RECONCILIATION_INTERVAL)"
     )
 
-    parser.add_argument("--reconcile-once", action="store_true",
-                        help="Run reconciliation once and exit")
+    parser.add_argument("--reconcile-once", action="store_true", help="Run reconciliation once and exit")
 
     return parser.parse_args(args)
 
@@ -103,8 +100,7 @@ def main(args: list[str] | None = None) -> int:
 
         if parsed_args.active_days:
             try:
-                days = [Weekday(day.strip().lower())
-                        for day in parsed_args.active_days.split(",")]
+                days = [Weekday(day.strip().lower()) for day in parsed_args.active_days.split(",")]
                 config.active_days = days
             except ValueError as e:
                 logger.error(f"Invalid active days format: {e}")

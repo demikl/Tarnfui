@@ -57,28 +57,29 @@ class TestTarnfuiConfig(unittest.TestCase):
         config = TarnfuiConfig()
         self.assertEqual(config.shutdown_time, "19:00")
         self.assertEqual(config.startup_time, "07:00")
-        self.assertEqual(config.active_days, [
-                         Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI])
+        self.assertEqual(config.active_days, [Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI])
         self.assertEqual(config.timezone, "UTC")
         self.assertEqual(config.reconciliation_interval, 60)
         self.assertIsNone(config.namespace)
 
     def test_from_env(self):
         """Test that values are loaded from environment variables."""
-        with mock.patch.dict(os.environ, {
-            "TARNFUI_SHUTDOWN_TIME": "20:00",
-            "TARNFUI_STARTUP_TIME": "08:30",
-            "TARNFUI_ACTIVE_DAYS": "mon,wed,fri",
-            "TARNFUI_TIMEZONE": "Europe/Paris",
-            "TARNFUI_RECONCILIATION_INTERVAL": "30",
-            "TARNFUI_NAMESPACE": "test-ns"
-        }):
+        with mock.patch.dict(
+            os.environ,
+            {
+                "TARNFUI_SHUTDOWN_TIME": "20:00",
+                "TARNFUI_STARTUP_TIME": "08:30",
+                "TARNFUI_ACTIVE_DAYS": "mon,wed,fri",
+                "TARNFUI_TIMEZONE": "Europe/Paris",
+                "TARNFUI_RECONCILIATION_INTERVAL": "30",
+                "TARNFUI_NAMESPACE": "test-ns",
+            },
+        ):
             config = TarnfuiConfig.from_env()
 
             self.assertEqual(config.shutdown_time, "20:00")
             self.assertEqual(config.startup_time, "08:30")
-            self.assertEqual(config.active_days, [
-                             Weekday.MON, Weekday.WED, Weekday.FRI])
+            self.assertEqual(config.active_days, [Weekday.MON, Weekday.WED, Weekday.FRI])
             self.assertEqual(config.timezone, "Europe/Paris")
             self.assertEqual(config.reconciliation_interval, 30)
             self.assertEqual(config.namespace, "test-ns")
