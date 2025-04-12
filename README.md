@@ -30,11 +30,24 @@ The following diagram illustrates the operational workflow of Tarnfui:
 
 ```mermaid
 sequenceDiagram
+    participant CLI as CLI (main)
     participant S as Scheduler
     participant K as KubernetesController
     participant R as DeploymentResource
     participant A as Kubernetes API
 
+    Note over CLI: Application start
+    CLI->>CLI: Parse arguments
+    CLI->>CLI: Setup logging
+    CLI->>CLI: Create TarnfuiConfig
+    CLI->>S: Create Scheduler
+    
+    alt Reconcile once
+        CLI->>S: reconcile()
+    else Run continuously
+        CLI->>S: run_reconciliation_loop()
+    end
+    
     Note over S: Time-based trigger
     S->>S: Check if should_be_active()
     
@@ -67,6 +80,12 @@ This diagram shows the core classes and their relationships in Tarnfui:
 
 ```mermaid
 classDiagram
+    class CLI {
+        +parse_args()
+        +setup_logging()
+        +main()
+    }
+    
     class Scheduler {
         -TarnfuiConfig config
         -KubernetesClient kubernetes_client
@@ -131,6 +150,8 @@ classDiagram
         +get_resource_key()
     }
     
+    CLI --> Scheduler : creates
+    CLI --> TarnfuiConfig : creates
     Scheduler --> TarnfuiConfig
     Scheduler --> KubernetesClient
     TarnfuiConfig --> Weekday
