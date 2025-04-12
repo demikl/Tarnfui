@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      serviceAccountName: {{ .Chart.Name }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: TARNFUI_SHUTDOWN_TIME
+          value: {{ .Values.tarnfui.shutdownTime | quote }}
+        - name: TARNFUI_STARTUP_TIME
+          value: {{ .Values.tarnfui.startupTime | quote }}
+        - name: TARNFUI_ACTIVE_DAYS
+          value: {{ .Values.tarnfui.activeDays | quote }}
+        - name: TARNFUI_TIMEZONE
+          value: {{ .Values.tarnfui.timezone | quote }}
+        - name: TARNFUI_RECONCILIATION_INTERVAL
+          value: {{ .Values.tarnfui.reconciliationInterval | quote }}
+        {{- if .Values.tarnfui.namespace }}
+        - name: TARNFUI_NAMESPACE
+          value: {{ .Values.tarnfui.namespace | quote }}
+        {{- end }}
+        args:
+        - "--verbose"
+        {{- if .Values.tarnfui.extraArgs }}
+        {{- range .Values.tarnfui.extraArgs }}
+        - {{ . | quote }}
+        {{- end }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}

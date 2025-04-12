@@ -1,0 +1,27 @@
+{
+    "name": "Python Dev Container",
+    "image": "mcr.microsoft.com/devcontainers/python:3.13",
+    "postCreateCommand": "pipx install uv && uv sync",
+    "postStartCommand": "/bin/sh .devcontainer/setup-local-git.sh",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-azuretools.vscode-docker",
+                "charliermarsh.ruff",
+                "ms-python.vscode-python-envs",
+                "ms-kubernetes-tools.vscode-kubernetes-tools",
+                "GitHub.copilot"
+            ]
+        }
+    },
+    "features": {
+        "kubectl-helm-minikube": "latest" // Installs kubectl and Helm
+    },
+    "mounts": [
+        "source=${env:HOME}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached" // Mounts KUBECONFIG
+    ],
+    "remoteEnv": {
+        "KUBECONFIG": "/home/vscode/.kube/config" // Sets KUBECONFIG in the container
+    }
+}

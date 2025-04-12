@@ -1,0 +1,35 @@
+name: Setup GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  setup-pages:
+    runs-on: ubuntu-latest
+    # Only run this job if the gh-pages branch doesn't exist yet
+    if: ${{ github.event_name == 'push' }}
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup GitHub Pages (create gh-pages branch if it doesn't exist)
+        run: |
+          git fetch origin gh-pages || true
+          if ! git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            git checkout --orphan gh-pages
+            git rm -rf --quiet .
+            echo "# Helm Repository for Tarnfui" > index.md
+            echo "This branch hosts the Helm chart repository for Tarnfui." >> index.md
+            git add index.md
+            git config --global user.name "${{ github.actor }}"
+            git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+            git commit -m "Initial GitHub Pages setup"
+            git push origin gh-pages
+          fi

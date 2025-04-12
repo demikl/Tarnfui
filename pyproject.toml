@@ -1,0 +1,32 @@
+[project]
+name = "tarnfui"
+version = "0.1.0"
+description = "Kubernetes cost and carbon energy saver that selectively shutdown workloads during non-working hours on staging clusters"
+readme = "README.md"
+license = "MIT"
+requires-python = "~=3.13.0"
+dependencies = ["kubernetes", "pydantic", "schedule", "pytz"]
+
+[project.scripts]
+tarnfui = "tarnfui.cli:main"
+
+[tool.uv]
+dev-dependencies = ["ruff", "pytest"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+extend-select = [
+    "F",   # Pyflakes: https://docs.astral.sh/ruff/rules/#pyflakes-f
+    "E",   # Error: https://docs.astral.sh/ruff/rules/#error-e
+    "W",   # Warnings: https://docs.astral.sh/ruff/rules/#warning-w
+    "I",   # isort: https://docs.astral.sh/ruff/rules/#isort-i
+    "UP",  # Pyupgrades: https://docs.astral.sh/ruff/rules/#pyupgrade-up
+    "C4",  # flake8-comprehensions: https://docs.astral.sh/ruff/rules/#flake8-comprehensions-c4
+    "TID", # Tidy imports: https://docs.astral.sh/ruff/rules/#flake8-tidy-imports-tid
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

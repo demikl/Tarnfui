@@ -1,0 +1,35 @@
+image:
+  repository: ghcr.io/{{ .Values.github.repository_owner | default "your-org" }}/tarnfui
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 250m
+    memory: 64Mi
+
+github:
+  repository_owner: ""
+
+# Tarnfui specific configuration
+tarnfui:
+  # Time to shut down deployments in 24-hour format (HH:MM)
+  shutdownTime: "19:00"
+  # Time to start up deployments in 24-hour format (HH:MM)
+  startupTime: "07:00"
+  # Timezone for time calculations (e.g., 'Europe/Paris', 'America/New_York')
+  timezone: "UTC"
+  # List of active days using English abbreviations (mon,tue,wed,thu,fri,sat,sun)
+  # Default is mon,tue,wed,thu,fri (Monday to Friday)
+  activeDays: "mon,tue,wed,thu,fri"
+  # Reconciliation interval in seconds
+  reconciliationInterval: 60
+  # Optional namespace to limit scope (leave blank for all namespaces)
+  namespace: ""
+  # Additional command line arguments for the Tarnfui application
+  extraArgs: []

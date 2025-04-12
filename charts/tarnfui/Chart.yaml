@@ -1,0 +1,5 @@
+apiVersion: v2
+name: tarnfui
+description: A Helm chart for deploying Tarnfui
+version: 0.1.0
+appVersion: "1.0.0"
