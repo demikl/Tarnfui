@@ -2,14 +2,12 @@
 
 This module handles all interactions with the Kubernetes API.
 """
-import json
 import logging
 import os
 import socket
 from datetime import UTC, datetime
 from typing import Any
 
-import requests
 from kubernetes import client, config
 
 logger = logging.getLogger(__name__)
@@ -106,125 +104,6 @@ class KubernetesClient:
         """
         return self.api.read_namespaced_deployment(name, namespace)
 
-    def list_deployments(self, namespace: str | None = None) -> list[dict[str, Any]]:
-        """List all deployments in the specified namespace or all namespaces with minimal data.
-
-        Args:
-            namespace: Namespace to list deployments from. If None, use the client's namespace.
-
-        Returns:
-            List of deployment objects with minimal data.
-        """
-        ns = namespace or self.namespace
-
-        try:
-            # Prepare the URL for API request
-            if ns:
-                logger.info(f"Listing deployments in namespace {ns}")
-                url = f"{self.host}/apis/apps/v1/namespaces/{ns}/deployments"
-            else:
-                logger.info("Listing deployments across all namespaces")
-                url = f"{self.host}/apis/apps/v1/deployments"
-
-            # Add headers for table format to reduce data transferred
-            headers = {
-                "Accept": "application/json;as=Table;g=meta.k8s.io;v=v1",
-                **self.auth_headers
-            }
-
-            # Setup request kwargs with proper authentication
-            request_kwargs = {
-                "headers": headers,
-                "verify": self.ssl_ca_cert if self.verify_ssl else False
-            }
-
-            # Add certificate-based authentication if available
-            if self.cert_file and self.key_file:
-                request_kwargs["cert"] = (self.cert_file, self.key_file)
-                logger.debug("Using client certificate authentication")
-            elif self.auth_headers:
-                logger.debug("Using token-based authentication")
-            else:
-                logger.debug(
-                    "No explicit authentication method found, relying on default configuration")
-
-            # Make the API request with proper authentication
-            response = requests.get(url, **request_kwargs)
-
-            # Raise exception if request failed
-            response.raise_for_status()
-
-            # Parse the response
-            data = response.json()
-
-            # Extract relevant deployment information
-            deployments = []
-            for row in data.get("rows", []):
-                cells = row.get("cells", [])
-
-                # exemple de contenu pour cells
-                # [ NAME, READY, UP-TO-DATE, AVAILABLE, AGE, CONTAINER, IMAGE, LABELS ]
-                # ['coredns', '0/0', 0, 0, '21h', 'coredns', 'registry.k8s.io/coredns/coredns:v1.11.3', 'k8s-app=kube-dns']
-
-                # Get the namespace either from metadata object or use the provided namespace
-                ns_value = ns or row.get("object", {}).get(
-                    "metadata", {}).get("namespace")
-
-                name = cells[0]  # First cell is the name
-
-                # Parse replicas from the Ready column (format is typically "1/1")
-                # Format: "ready/total" (e.g., "3/3")
-                ready_str = cells[1]
-                current_replicas = int(ready_str.split('/')[1])
-
-                # Create a minimal deployment object with only what we need
-                deployment = {
-                    "metadata": {
-                        "name": name,
-                        "namespace": ns_value
-                    },
-                    "spec": {
-                        "replicas": current_replicas
-                    },
-                    "is_minimal": True  # Flag to indicate this is a minimal object
-                }
-
-                deployments.append(deployment)
-
-            logger.debug(
-                f"Retrieved {len(deployments)} deployments with minimal data")
-            return deployments
-
-        except (requests.RequestException, json.JSONDecodeError) as e:
-            logger.warning(f"Error listing deployments with minimal data: {e}")
-            logger.info("Falling back to standard API call")
-
-            # Fall back to standard API call if the minimal approach fails
-            try:
-                if ns:
-                    deployments = self.api.list_namespaced_deployment(ns).items
-                else:
-                    deployments = self.api.list_deployment_for_all_namespaces().items
-
-                # Convert to simplified format
-                return [
-                    {
-                        "metadata": {
-                            "name": d.metadata.name,
-                            "namespace": d.metadata.namespace
-                        },
-                        "spec": {
-                            "replicas": d.spec.replicas
-                        },
-                        "is_minimal": False
-                    }
-                    for d in deployments
-                ]
-            except Exception as e2:
-                logger.error(f"Error in fallback API call: {e2}")
-                # Return empty list rather than raising exception
-                return []
-
     def _ensure_full_deployment_object(self, deployment: dict[str, Any] | client.V1Deployment) -> client.V1Deployment:
         """Ensure we have a full deployment object for operations that need it.
 
@@ -239,7 +118,7 @@ class KubernetesClient:
             return deployment
 
         # If it's our minimal object, fetch the full deployment
-        if isinstance(deployment, dict) and deployment.get("is_minimal", False):
+        if isinstance(deployment, dict):
             name = deployment["metadata"]["name"]
             namespace = deployment["metadata"]["namespace"]
             return self._get_deployment_light(name, namespace)
@@ -347,13 +226,6 @@ class KubernetesClient:
         self.deployment_replicas[key] = replicas
 
         try:
-            # Save as an annotation on the deployment
-            # Need to fetch the full deployment if we're working with a minimal object
-            if isinstance(deployment, dict) and deployment.get("is_minimal", False):
-                full_deployment = self._get_deployment_light(name, namespace)
-            else:
-                full_deployment = deployment
-
             # Update the deployment with the new annotation
             self.api.patch_namespaced_deployment(
                 name=name,
@@ -399,7 +271,7 @@ class KubernetesClient:
         # We need to check annotations which requires the full object
         try:
             # Need to fetch the full deployment if we're working with a minimal object
-            if isinstance(deployment, dict) and deployment.get("is_minimal", False):
+            if isinstance(deployment, dict):
                 full_deployment = self._get_deployment_light(name, namespace)
             else:
                 full_deployment = deployment
@@ -474,51 +346,176 @@ class KubernetesClient:
             body={"spec": {"replicas": replicas}}
         )
 
-    def stop_deployments(self, namespace: str | None = None) -> None:
+    def stop_deployments(self, namespace: str | None = None, batch_size: int = 100) -> None:
         """Scale all deployments to zero replicas.
+
+        Uses pagination to process deployments in batches to limit memory usage.
 
         Args:
             namespace: Namespace to stop deployments in. If None, use the client's namespace.
+            batch_size: Number of deployments to process per batch.
         """
-        deployments = self.list_deployments(namespace)
+        ns = namespace or self.namespace
 
-        for deployment in deployments:
-            # Skip deployments that are already scaled to 0
-            current_replicas = deployment["spec"]["replicas"]
-            if current_replicas == 0:
-                continue
+        # Variables to track progress
+        total_processed = 0
+        total_stopped = 0
+        continue_token = None
+        page_count = 0
 
-            self.scale_deployment(deployment, 0)
-            logger.info(
-                f"Stopped deployment {deployment["metadata"]["namespace"]}/{deployment["metadata"]["name"]}"
-            )
-
+        # Process deployments in pages to reduce memory usage
         logger.info(
-            f"Completed processing {len(deployments)} deployments.")
+            "Starting to stop deployments")
 
-    def start_deployments(self, namespace: str | None = None) -> None:
+        try:
+            # Get official API client for pagination
+            api = self.api
+
+            while True:
+                page_count += 1
+
+                # Fetch current page of deployments
+                if ns:
+                    result = api.list_namespaced_deployment(
+                        ns,
+                        limit=batch_size,
+                        _continue=continue_token
+                    )
+                else:
+                    result = api.list_deployment_for_all_namespaces(
+                        limit=batch_size,
+                        _continue=continue_token
+                    )
+
+                current_page_size = len(result.items)
+                total_processed += current_page_size
+                logger.debug(
+                    f"Processing page {page_count} with {current_page_size} deployments")
+
+                # Process each deployment in this page
+                for deployment in result.items:
+                    # Skip deployments that are already scaled to 0
+                    if deployment.spec.replicas == 0:
+                        continue
+
+                    # Convert to our minimal format for consistency with other methods
+                    deployment_dict = {
+                        "metadata": {
+                            "name": deployment.metadata.name,
+                            "namespace": deployment.metadata.namespace
+                        },
+                        "spec": {
+                            "replicas": deployment.spec.replicas
+                        }
+                    }
+
+                    self.scale_deployment(deployment_dict, 0)
+                    total_stopped += 1
+                    logger.info(
+                        f"Stopped deployment {deployment.metadata.namespace}/{deployment.metadata.name}"
+                    )
+
+                # Check if there are more pages to process
+                continue_token = result.metadata._continue
+                if not continue_token:
+                    break
+
+                logger.debug(
+                    f"Continuing to next page with token: {continue_token}")
+
+            logger.info(
+                f"Completed processing {total_processed} deployments across {page_count} pages. Stopped {total_stopped} deployments.")
+
+        except Exception as e:
+            logger.error(f"Error stopping deployments: {e}")
+            # Don't raise the exception, just log it, to avoid crashing the application
+
+    def start_deployments(self, namespace: str | None = None, batch_size: int = 100) -> None:
         """Restore all deployments to their original replica counts.
+
+        Uses pagination to process deployments in batches to limit memory usage.
 
         Args:
             namespace: Namespace to start deployments in. If None, use the client's namespace.
+            batch_size: Number of deployments to process per batch.
         """
-        deployments = self.list_deployments(namespace)
+        ns = namespace or self.namespace
 
-        for deployment in deployments:
-            # Only restore deployments that are currently scaled to 0
-            current_replicas = deployment["spec"]["replicas"]
-            if current_replicas > 0:
-                continue
+        # Variables to track progress
+        total_processed = 0
+        total_started = 0
+        continue_token = None
+        page_count = 0
 
-            original_replicas = self.get_original_replicas(deployment)
-
-            if original_replicas is not None and original_replicas > 0:
-                self.scale_deployment(deployment, original_replicas)
-                name = deployment["metadata"]["name"]
-                namespace = deployment["metadata"]["namespace"]
-                logger.info(
-                    f"Restored deployment {namespace}/{name} to {original_replicas} replicas"
-                )
-
+        # Process deployments in pages to reduce memory usage
         logger.info(
-            f"Completed processing {len(deployments)} deployments.")
+            "Starting to restore deployments")
+
+        try:
+            # Get official API client for pagination
+            api = self.api
+
+            while True:
+                page_count += 1
+
+                # Fetch current page of deployments
+                if ns:
+                    result = api.list_namespaced_deployment(
+                        ns,
+                        limit=batch_size,
+                        _continue=continue_token
+                    )
+                else:
+                    result = api.list_deployment_for_all_namespaces(
+                        limit=batch_size,
+                        _continue=continue_token
+                    )
+
+                current_page_size = len(result.items)
+                total_processed += current_page_size
+                logger.debug(
+                    f"Processing page {page_count} with {current_page_size} deployments")
+
+                # Process each deployment in this page
+                for deployment in result.items:
+                    # Only restore deployments that are currently scaled to 0
+                    if deployment.spec.replicas > 0:
+                        continue
+
+                    # Convert to our minimal format for consistency with other methods
+                    deployment_dict = {
+                        "metadata": {
+                            "name": deployment.metadata.name,
+                            "namespace": deployment.metadata.namespace
+                        },
+                        "spec": {
+                            "replicas": deployment.spec.replicas
+                        }
+                    }
+
+                    # Get the original replicas for this deployment
+                    original_replicas = self.get_original_replicas(
+                        deployment_dict)
+
+                    if original_replicas is not None and original_replicas > 0:
+                        self.scale_deployment(
+                            deployment_dict, original_replicas)
+                        total_started += 1
+                        logger.info(
+                            f"Restored deployment {deployment.metadata.namespace}/{deployment.metadata.name} to {original_replicas} replicas"
+                        )
+
+                # Check if there are more pages to process
+                continue_token = result.metadata._continue
+                if not continue_token:
+                    break
+
+                logger.debug(
+                    f"Continuing to next page with token: {continue_token}")
+
+            logger.info(
+                f"Completed processing {total_processed} deployments across {page_count} pages. Started {total_started} deployments.")
+
+        except Exception as e:
+            logger.error(f"Error starting deployments: {e}")
+            # Don't raise the exception, just log it, to avoid crashing the application
