@@ -2,6 +2,7 @@
 
 This module serves as the entrypoint for the Tarnfui application.
 """
+
 import argparse
 import logging
 import sys
@@ -20,11 +21,7 @@ def setup_logging(verbose: bool = False) -> None:
     log_level = logging.DEBUG if verbose else logging.INFO
     log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-    logging.basicConfig(
-        level=log_level,
-        format=log_format,
-        stream=sys.stdout
-    )
+    logging.basicConfig(level=log_level, format=log_format, stream=sys.stdout)
 
 
 def parse_args(args: list[str] | None = None) -> argparse.Namespace:
@@ -40,51 +37,35 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         prog="tarnfui",
         description=(
             "Kubernetes cost and carbon energy saver that selectively shutdown workloads during non-working hours."
-        )
+        ),
+    )
+
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
+
+    parser.add_argument("--namespace", help="Specific namespace to manage (overrides TARNFUI_NAMESPACE)")
+
+    parser.add_argument(
+        "--startup-time", help="Time to start deployments (HH:MM format, overrides TARNFUI_STARTUP_TIME)"
     )
 
     parser.add_argument(
-        "-v", "--verbose",
-        action="store_true",
-        help="Enable verbose logging"
-    )
-
-    parser.add_argument(
-        "--namespace",
-        help="Specific namespace to manage (overrides TARNFUI_NAMESPACE)"
-    )
-
-    parser.add_argument(
-        "--startup-time",
-        help="Time to start deployments (HH:MM format, overrides TARNFUI_STARTUP_TIME)"
-    )
-
-    parser.add_argument(
-        "--shutdown-time",
-        help="Time to stop deployments (HH:MM format, overrides TARNFUI_SHUTDOWN_TIME)"
+        "--shutdown-time", help="Time to stop deployments (HH:MM format, overrides TARNFUI_SHUTDOWN_TIME)"
     )
 
     parser.add_argument(
         "--active-days",
-        help="Comma-separated list of active days (mon,tue,wed,thu,fri,sat,sun format, overrides TARNFUI_ACTIVE_DAYS)"
+        help="Comma-separated list of active days (mon,tue,wed,thu,fri,sat,sun format, overrides TARNFUI_ACTIVE_DAYS)",
     )
 
     parser.add_argument(
-        "--timezone",
-        help="Timezone for time calculations (e.g. 'Europe/Paris', overrides TARNFUI_TIMEZONE)"
+        "--timezone", help="Timezone for time calculations (e.g. 'Europe/Paris', overrides TARNFUI_TIMEZONE)"
     )
 
     parser.add_argument(
-        "--interval",
-        type=int,
-        help="Reconciliation interval in seconds (overrides TARNFUI_RECONCILIATION_INTERVAL)"
+        "--interval", type=int, help="Reconciliation interval in seconds (overrides TARNFUI_RECONCILIATION_INTERVAL)"
     )
 
-    parser.add_argument(
-        "--reconcile-once",
-        action="store_true",
-        help="Run reconciliation once and exit"
-    )
+    parser.add_argument("--reconcile-once", action="store_true", help="Run reconciliation once and exit")
 
     return parser.parse_args(args)
 
@@ -119,8 +100,7 @@ def main(args: list[str] | None = None) -> int:
 
         if parsed_args.active_days:
             try:
-                days = [Weekday(day.strip().lower())
-                        for day in parsed_args.active_days.split(",")]
+                days = [Weekday(day.strip().lower()) for day in parsed_args.active_days.split(",")]
                 config.active_days = days
             except ValueError as e:
                 logger.error(f"Invalid active days format: {e}")
@@ -128,11 +108,13 @@ def main(args: list[str] | None = None) -> int:
         if parsed_args.interval:
             config.reconciliation_interval = parsed_args.interval
 
-        logger.info(f"Configuration: startup={config.startup_time}, shutdown={config.shutdown_time}, "
-                    f"timezone={config.timezone}, "
-                    f"active_days={[day.value for day in config.active_days]}, "
-                    f"interval={config.reconciliation_interval}s, "
-                    f"namespace={config.namespace or 'all'}")
+        logger.info(
+            f"Configuration: startup={config.startup_time}, shutdown={config.shutdown_time}, "
+            f"timezone={config.timezone}, "
+            f"active_days={[day.value for day in config.active_days]}, "
+            f"interval={config.reconciliation_interval}s, "
+            f"namespace={config.namespace or 'all'}"
+        )
 
         # Create Kubernetes client
         k8s_client = KubernetesClient(namespace=config.namespace)

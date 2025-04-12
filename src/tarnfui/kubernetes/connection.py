@@ -2,6 +2,7 @@
 
 This module handles the connection to the Kubernetes API.
 """
+
 import logging
 import os
 import socket
@@ -46,8 +47,7 @@ class KubernetesConnection:
                 logger.error(
                     "Failed to load Kubernetes configuration. Ensure that the kubeconfig file is available and valid."
                 )
-                raise RuntimeError(
-                    "Kubernetes configuration error: kubeconfig file is missing or invalid.") from e
+                raise RuntimeError("Kubernetes configuration error: kubeconfig file is missing or invalid.") from e
 
         # Initialize API clients
         self.apps_v1_api = client.AppsV1Api()
@@ -62,19 +62,19 @@ class KubernetesConnection:
         self.auth_headers = {}
 
         # Handle token-based authentication
-        if hasattr(self.api_client.configuration, 'api_key'):
+        if hasattr(self.api_client.configuration, "api_key"):
             # Add Bearer token if available
             auth_settings = self.api_client.configuration.auth_settings()
             for auth in auth_settings.values():
-                if auth['in'] == 'header' and auth.get('value'):
-                    self.auth_headers[auth['key']] = auth['value']
+                if auth["in"] == "header" and auth.get("value"):
+                    self.auth_headers[auth["key"]] = auth["value"]
 
         # Handle certificate-based authentication
         self.cert_file = None
         self.key_file = None
-        if hasattr(self.api_client.configuration, 'cert_file') and self.api_client.configuration.cert_file:
+        if hasattr(self.api_client.configuration, "cert_file") and self.api_client.configuration.cert_file:
             self.cert_file = self.api_client.configuration.cert_file
-        if hasattr(self.api_client.configuration, 'key_file') and self.api_client.configuration.key_file:
+        if hasattr(self.api_client.configuration, "key_file") and self.api_client.configuration.key_file:
             self.key_file = self.api_client.configuration.key_file
 
         # Setup SSL verification

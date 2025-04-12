@@ -2,6 +2,7 @@
 
 This module handles all interactions with the Kubernetes API.
 """
+
 import logging
 
 from tarnfui.kubernetes.controller import KubernetesController
@@ -75,7 +76,7 @@ class KubernetesClient:
             kind="Deployment",
             event_type=event_type,
             reason=reason,
-            message=message
+            message=message,
         )
 
     def save_deployment_state(self, deployment):
@@ -89,6 +90,7 @@ class KubernetesClient:
             # Convert dictionary format if needed
             if isinstance(deployment, dict):
                 from kubernetes import client
+
                 name = deployment["metadata"]["name"]
                 namespace = deployment["metadata"]["namespace"]
                 try:
@@ -97,13 +99,8 @@ class KubernetesClient:
                 except Exception:
                     # Fall back to creating a minimal deployment object
                     deployment = client.V1Deployment(
-                        metadata=client.V1ObjectMeta(
-                            name=name,
-                            namespace=namespace
-                        ),
-                        spec=client.V1DeploymentSpec(
-                            replicas=deployment["spec"]["replicas"]
-                        )
+                        metadata=client.V1ObjectMeta(name=name, namespace=namespace),
+                        spec=client.V1DeploymentSpec(replicas=deployment["spec"]["replicas"]),
                     )
 
             handler.save_resource_state(deployment)
@@ -122,6 +119,7 @@ class KubernetesClient:
             # Convert dictionary format if needed
             if isinstance(deployment, dict):
                 from kubernetes import client
+
                 name = deployment["metadata"]["name"]
                 namespace = deployment["metadata"]["namespace"]
                 try:
@@ -130,13 +128,8 @@ class KubernetesClient:
                 except Exception:
                     # Fall back to creating a minimal deployment object
                     deployment = client.V1Deployment(
-                        metadata=client.V1ObjectMeta(
-                            name=name,
-                            namespace=namespace
-                        ),
-                        spec=client.V1DeploymentSpec(
-                            replicas=deployment["spec"].get("replicas", 0)
-                        )
+                        metadata=client.V1ObjectMeta(name=name, namespace=namespace),
+                        spec=client.V1DeploymentSpec(replicas=deployment["spec"].get("replicas", 0)),
                     )
 
             return handler.get_original_replicas(deployment)
@@ -154,6 +147,7 @@ class KubernetesClient:
             # Convert dictionary format if needed
             if isinstance(deployment, dict):
                 from kubernetes import client
+
                 name = deployment["metadata"]["name"]
                 namespace = deployment["metadata"]["namespace"]
                 try:
@@ -162,13 +156,8 @@ class KubernetesClient:
                 except Exception:
                     # Fall back to creating a minimal deployment object
                     deployment = client.V1Deployment(
-                        metadata=client.V1ObjectMeta(
-                            name=name,
-                            namespace=namespace
-                        ),
-                        spec=client.V1DeploymentSpec(
-                            replicas=deployment["spec"].get("replicas", 0)
-                        )
+                        metadata=client.V1ObjectMeta(name=name, namespace=namespace),
+                        spec=client.V1DeploymentSpec(replicas=deployment["spec"].get("replicas", 0)),
                     )
 
             handler.scale(deployment, replicas)
@@ -217,6 +206,7 @@ class KubernetesClient:
         """
         # If it's already a V1Deployment, return it
         from kubernetes import client
+
         if isinstance(deployment, client.V1Deployment):
             return deployment
 
@@ -229,10 +219,7 @@ class KubernetesClient:
         # Otherwise convert the dict to a V1Deployment object
         return client.V1Deployment(
             metadata=client.V1ObjectMeta(
-                name=deployment["metadata"]["name"],
-                namespace=deployment["metadata"]["namespace"]
+                name=deployment["metadata"]["name"], namespace=deployment["metadata"]["namespace"]
             ),
-            spec=client.V1DeploymentSpec(
-                replicas=deployment["spec"]["replicas"]
-            )
+            spec=client.V1DeploymentSpec(replicas=deployment["spec"]["replicas"]),
         )

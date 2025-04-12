@@ -2,6 +2,7 @@
 
 This module provides specific functionality for managing Kubernetes Deployments.
 """
+
 import logging
 
 from kubernetes import client
@@ -51,16 +52,9 @@ class DeploymentResource(KubernetesResource[client.V1Deployment]):
             while True:
                 # Fetch current page of deployments
                 if ns:
-                    result = self.api.list_namespaced_deployment(
-                        ns,
-                        limit=batch_size,
-                        _continue=continue_token
-                    )
+                    result = self.api.list_namespaced_deployment(ns, limit=batch_size, _continue=continue_token)
                 else:
-                    result = self.api.list_deployment_for_all_namespaces(
-                        limit=batch_size,
-                        _continue=continue_token
-                    )
+                    result = self.api.list_deployment_for_all_namespaces(limit=batch_size, _continue=continue_token)
 
                 # Add deployments from this page to the result
                 all_deployments.extend(result.items)
@@ -110,11 +104,12 @@ class DeploymentResource(KubernetesResource[client.V1Deployment]):
             self.api.patch_namespaced_deployment(
                 name=deployment.metadata.name,
                 namespace=deployment.metadata.namespace,
-                body={"spec": {"replicas": replicas}}
+                body={"spec": {"replicas": replicas}},
             )
         except ApiException as e:
             logger.error(
-                f"Error setting replicas for deployment {deployment.metadata.namespace}/{deployment.metadata.name}: {e}")
+                f"Error setting replicas for deployment {deployment.metadata.namespace}/{deployment.metadata.name}: {e}"
+            )
             raise
 
     def get_resource_key(self, deployment: client.V1Deployment) -> str:
@@ -162,12 +157,12 @@ class DeploymentResource(KubernetesResource[client.V1Deployment]):
             self.api.patch_namespaced_deployment(
                 name=deployment.metadata.name,
                 namespace=deployment.metadata.namespace,
-                body={"metadata": {"annotations": {
-                    annotation_key: annotation_value}}}
+                body={"metadata": {"annotations": {annotation_key: annotation_value}}},
             )
         except ApiException as e:
             logger.error(
-                f"Error saving annotation for deployment {deployment.metadata.namespace}/{deployment.metadata.name}: {e}")
+                f"Error saving annotation for deployment {deployment.metadata.namespace}/{deployment.metadata.name}: {e}"
+            )
             raise
 
     def _get_annotation(self, deployment: client.V1Deployment, annotation_key: str) -> str | None:
@@ -180,8 +175,10 @@ class DeploymentResource(KubernetesResource[client.V1Deployment]):
         Returns:
             The annotation value, or None if not found.
         """
-        if (hasattr(deployment.metadata, 'annotations') and
-                deployment.metadata.annotations and
-                annotation_key in deployment.metadata.annotations):
+        if (
+            hasattr(deployment.metadata, "annotations")
+            and deployment.metadata.annotations
+            and annotation_key in deployment.metadata.annotations
+        ):
             return deployment.metadata.annotations[annotation_key]
         return None

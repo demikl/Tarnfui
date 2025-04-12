@@ -2,6 +2,7 @@
 
 This module provides a controller for managing Kubernetes resources.
 """
+
 import logging
 
 from tarnfui.kubernetes.base import KubernetesResource
@@ -34,8 +35,7 @@ class KubernetesController:
     def _register_resources(self) -> None:
         """Register all supported resource types with their handlers."""
         # Register standard resource types
-        self.register_resource("deployments", DeploymentResource(
-            self.connection, self.namespace))
+        self.register_resource("deployments", DeploymentResource(self.connection, self.namespace))
 
         # In the future, register additional resource types here:
         # self.register_resource("statefulsets", StatefulSetResource(self.connection, self.namespace))
@@ -62,8 +62,7 @@ class KubernetesController:
         """
         handler = self.resources.get(resource_type)
         if not handler:
-            logger.warning(
-                f"No handler registered for resource type {resource_type}")
+            logger.warning(f"No handler registered for resource type {resource_type}")
         return handler
 
     def stop_resources(self, resource_types: list[str] | None = None, namespace: str | None = None) -> None:

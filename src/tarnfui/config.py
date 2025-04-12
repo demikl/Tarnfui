@@ -80,21 +80,15 @@ class TarnfuiConfig(BaseModel):
         timezone: Timezone to use for time calculations.
     """
 
-    shutdown_time: str = Field(default="19:00", json_schema_extra={
-                               "env": "TARNFUI_SHUTDOWN_TIME"})
-    startup_time: str = Field(default="07:00", json_schema_extra={
-                              "env": "TARNFUI_STARTUP_TIME"})
+    shutdown_time: str = Field(default="19:00", json_schema_extra={"env": "TARNFUI_SHUTDOWN_TIME"})
+    startup_time: str = Field(default="07:00", json_schema_extra={"env": "TARNFUI_STARTUP_TIME"})
     active_days: list[Weekday] = Field(
-        default=[Weekday.MON, Weekday.TUE,
-                 Weekday.WED, Weekday.THU, Weekday.FRI],
+        default=[Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI],
         json_schema_extra={"env": "TARNFUI_ACTIVE_DAYS"},
     )
-    timezone: str = Field(default="UTC", json_schema_extra={
-                          "env": "TARNFUI_TIMEZONE"})
-    reconciliation_interval: int = Field(default=60, json_schema_extra={
-                                         "env": "TARNFUI_RECONCILIATION_INTERVAL"})
-    namespace: str | None = Field(default=None, json_schema_extra={
-                                  "env": "TARNFUI_NAMESPACE"})
+    timezone: str = Field(default="UTC", json_schema_extra={"env": "TARNFUI_TIMEZONE"})
+    reconciliation_interval: int = Field(default=60, json_schema_extra={"env": "TARNFUI_RECONCILIATION_INTERVAL"})
+    namespace: str | None = Field(default=None, json_schema_extra={"env": "TARNFUI_NAMESPACE"})
 
     @field_validator("shutdown_time", "startup_time")
     def validate_time_format(cls, v):
@@ -124,17 +118,13 @@ class TarnfuiConfig(BaseModel):
         startup_time = os.getenv("TARNFUI_STARTUP_TIME", "07:00")
         timezone = os.getenv("TARNFUI_TIMEZONE", "UTC")
 
-        active_days_str = os.getenv(
-            "TARNFUI_ACTIVE_DAYS", "mon,tue,wed,thu,fri")
+        active_days_str = os.getenv("TARNFUI_ACTIVE_DAYS", "mon,tue,wed,thu,fri")
         try:
-            active_days = [Weekday(day.lower())
-                           for day in active_days_str.split(",")]
+            active_days = [Weekday(day.lower()) for day in active_days_str.split(",")]
         except ValueError:
-            active_days = [Weekday.MON, Weekday.TUE,
-                           Weekday.WED, Weekday.THU, Weekday.FRI]
+            active_days = [Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI]
 
-        reconciliation_interval = int(
-            os.getenv("TARNFUI_RECONCILIATION_INTERVAL", "60"))
+        reconciliation_interval = int(os.getenv("TARNFUI_RECONCILIATION_INTERVAL", "60"))
         namespace = os.getenv("TARNFUI_NAMESPACE")
 
         return cls(

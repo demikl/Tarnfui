@@ -2,6 +2,7 @@
 
 This module handles the scheduling of operations based on time of day and day of week.
 """
+
 import datetime
 import logging
 import time
@@ -62,13 +63,11 @@ class Scheduler:
         current_time = now.time().replace(tzinfo=None)  # Remove tzinfo for comparison
 
         # Convert active_days enum values to integers for comparison
-        active_day_nums = [Weekday.to_integer(
-            day) for day in self.config.active_days]
+        active_day_nums = [Weekday.to_integer(day) for day in self.config.active_days]
 
         # Check if today is an active day
         if current_day_num not in active_day_nums:
-            logger.info(
-                f"Today (day {Weekday.from_integer(current_day_num)}) is not an active day")
+            logger.info(f"Today (day {Weekday.from_integer(current_day_num)}) is not an active day")
             return False
 
         # Parse configured times
@@ -115,11 +114,9 @@ class Scheduler:
         This method runs in an infinite loop, periodically checking if deployments
         should be stopped or started based on the current time.
         """
-        logger.info(
-            f"Starting reconciliation loop with interval {self.config.reconciliation_interval} seconds")
+        logger.info(f"Starting reconciliation loop with interval {self.config.reconciliation_interval} seconds")
         logger.info(f"Using timezone: {self.config.timezone}")
-        logger.info(
-            f"Active days: {', '.join(day.value for day in self.config.active_days)}")
+        logger.info(f"Active days: {', '.join(day.value for day in self.config.active_days)}")
         logger.info(f"Startup time: {self.config.startup_time}")
         logger.info(f"Shutdown time: {self.config.shutdown_time}")
 

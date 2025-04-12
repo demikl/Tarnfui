@@ -2,6 +2,7 @@
 
 This module provides base classes for all Kubernetes resources.
 """
+
 import abc
 import logging
 from typing import ClassVar, Generic, TypeVar
@@ -11,7 +12,7 @@ from tarnfui.kubernetes.connection import KubernetesConnection
 logger = logging.getLogger(__name__)
 
 # Type variable for resource types
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class KubernetesResource(Generic[T], abc.ABC):
@@ -138,8 +139,7 @@ class KubernetesResource(Generic[T], abc.ABC):
         namespace = self.get_resource_namespace(resource)
 
         if replicas <= 0:
-            logger.debug(
-                f"Skipping save for {self.RESOURCE_KIND} {namespace}/{name} with 0 replicas")
+            logger.debug(f"Skipping save for {self.RESOURCE_KIND} {namespace}/{name} with 0 replicas")
             return
 
         key = self.get_resource_key(resource)
@@ -149,13 +149,10 @@ class KubernetesResource(Generic[T], abc.ABC):
 
         try:
             # Try to save the state in an annotation
-            self._save_annotation(
-                resource, self.REPLICA_ANNOTATION, str(replicas))
-            logger.debug(
-                f"Saved state for {self.RESOURCE_KIND} {key} in annotation: {replicas} replicas")
+            self._save_annotation(resource, self.REPLICA_ANNOTATION, str(replicas))
+            logger.debug(f"Saved state for {self.RESOURCE_KIND} {key} in annotation: {replicas} replicas")
         except Exception as e:
-            logger.warning(
-                f"Failed to save state in annotation for {self.RESOURCE_KIND} {key}: {e}")
+            logger.warning(f"Failed to save state in annotation for {self.RESOURCE_KIND} {key}: {e}")
             logger.info(f"State saved in memory only: {replicas} replicas")
 
     @abc.abstractmethod
@@ -185,26 +182,21 @@ class KubernetesResource(Generic[T], abc.ABC):
         # Try from memory cache first to avoid an API call
         if key in self._memory_state:
             replicas = self._memory_state[key]
-            logger.debug(
-                f"Retrieved original replicas from memory cache for {key}: {replicas}")
+            logger.debug(f"Retrieved original replicas from memory cache for {key}: {replicas}")
             return replicas
 
         # Try to get from annotations
         try:
-            annotation_value = self._get_annotation(
-                resource, self.REPLICA_ANNOTATION)
+            annotation_value = self._get_annotation(resource, self.REPLICA_ANNOTATION)
             if annotation_value:
                 try:
                     replicas = int(annotation_value)
-                    logger.debug(
-                        f"Retrieved original replicas from annotation for {key}: {replicas}")
+                    logger.debug(f"Retrieved original replicas from annotation for {key}: {replicas}")
                     return replicas
                 except (ValueError, TypeError) as e:
-                    logger.warning(
-                        f"Invalid replica count in annotation for {key}: {e}")
+                    logger.warning(f"Invalid replica count in annotation for {key}: {e}")
         except Exception as e:
-            logger.warning(
-                f"Error getting annotations for {self.RESOURCE_KIND} {key}: {e}")
+            logger.warning(f"Error getting annotations for {self.RESOURCE_KIND} {key}: {e}")
 
         logger.warning(f"No saved state found for {self.RESOURCE_KIND} {key}")
         return None
@@ -235,8 +227,7 @@ class KubernetesResource(Generic[T], abc.ABC):
         namespace = self.get_resource_namespace(resource)
         current_replicas = self.get_replicas(resource)
 
-        logger.debug(
-            f"Scaling {self.RESOURCE_KIND} {namespace}/{name} to {replicas} replicas")
+        logger.debug(f"Scaling {self.RESOURCE_KIND} {namespace}/{name} to {replicas} replicas")
 
         # Save the current state if scaling to zero
         if replicas == 0 and current_replicas > 0:
@@ -244,6 +235,7 @@ class KubernetesResource(Generic[T], abc.ABC):
 
             # Generate a scaling event
             from tarnfui.kubernetes.resources.events import create_scaling_event
+
             create_scaling_event(
                 connection=self.connection,
                 resource=resource,
@@ -251,12 +243,13 @@ class KubernetesResource(Generic[T], abc.ABC):
                 kind=self.RESOURCE_KIND,
                 event_type="Normal",
                 reason="Stopped",
-                message=f"Scaled down {self.RESOURCE_KIND} from {current_replicas} to 0 replicas by Tarnfui"
+                message=f"Scaled down {self.RESOURCE_KIND} from {current_replicas} to 0 replicas by Tarnfui",
             )
 
         # Generate a scaling event when scaling up
         elif replicas > 0 and current_replicas == 0:
             from tarnfui.kubernetes.resources.events import create_scaling_event
+
             create_scaling_event(
                 connection=self.connection,
                 resource=resource,
@@ -264,7 +257,7 @@ class KubernetesResource(Generic[T], abc.ABC):
                 kind=self.RESOURCE_KIND,
                 event_type="Normal",
                 reason="Started",
-                message=f"Scaled up {self.RESOURCE_KIND} from 0 to {replicas} replicas by Tarnfui"
+                message=f"Scaled up {self.RESOURCE_KIND} from 0 to {replicas} replicas by Tarnfui",
             )
 
         # Apply the new scale
@@ -296,12 +289,11 @@ class KubernetesResource(Generic[T], abc.ABC):
                 total_stopped += 1
                 name = self.get_resource_name(resource)
                 namespace = self.get_resource_namespace(resource)
-                logger.info(
-                    f"Stopped {self.RESOURCE_KIND} {namespace}/{name}"
-                )
+                logger.info(f"Stopped {self.RESOURCE_KIND} {namespace}/{name}")
 
             logger.info(
-                f"Completed processing {total_processed} {self.RESOURCE_KIND}s. Stopped {total_stopped} {self.RESOURCE_KIND}s.")
+                f"Completed processing {total_processed} {self.RESOURCE_KIND}s. Stopped {total_stopped} {self.RESOURCE_KIND}s."
+            )
 
         except Exception as e:
             logger.error(f"Error stopping {self.RESOURCE_KIND}s: {e}")
@@ -336,12 +328,11 @@ class KubernetesResource(Generic[T], abc.ABC):
                     total_started += 1
                     name = self.get_resource_name(resource)
                     namespace = self.get_resource_namespace(resource)
-                    logger.info(
-                        f"Restored {self.RESOURCE_KIND} {namespace}/{name} to {original_replicas} replicas"
-                    )
+                    logger.info(f"Restored {self.RESOURCE_KIND} {namespace}/{name} to {original_replicas} replicas")
 
             logger.info(
-                f"Completed processing {total_processed} {self.RESOURCE_KIND}s. Started {total_started} {self.RESOURCE_KIND}s.")
+                f"Completed processing {total_processed} {self.RESOURCE_KIND}s. Started {total_started} {self.RESOURCE_KIND}s."
+            )
 
         except Exception as e:
             logger.error(f"Error starting {self.RESOURCE_KIND}s: {e}")

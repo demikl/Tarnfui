@@ -2,6 +2,7 @@
 
 This module provides functions for creating events for Kubernetes resources.
 """
+
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -31,7 +32,7 @@ def create_scaling_event(
     kind: str,
     event_type: str,
     reason: str,
-    message: str
+    message: str,
 ) -> None:
     """Create a Kubernetes event for a resource scaling operation.
 
@@ -53,8 +54,7 @@ def create_scaling_event(
         if hasattr(resource, "metadata"):
             metadata = resource.metadata
             name = metadata.name if hasattr(metadata, "name") else ""
-            namespace = metadata.namespace if hasattr(
-                metadata, "namespace") else ""
+            namespace = metadata.namespace if hasattr(metadata, "namespace") else ""
             uid = metadata.uid if hasattr(metadata, "uid") else None
         elif isinstance(resource, dict) and "metadata" in resource:
             metadata = resource["metadata"]
@@ -63,8 +63,7 @@ def create_scaling_event(
             uid = metadata.get("uid")
 
         if not name or not namespace:
-            logger.warning(
-                f"Cannot create event for {kind} without name and namespace")
+            logger.warning(f"Cannot create event for {kind} without name and namespace")
             return
 
         # Use datetime with timezone info
@@ -72,10 +71,7 @@ def create_scaling_event(
 
         # Initialize the event body
         body = client.EventsV1Event(
-            metadata=client.V1ObjectMeta(
-                generate_name=f"{name}-",
-                namespace=namespace
-            ),
+            metadata=client.V1ObjectMeta(generate_name=f"{name}-", namespace=namespace),
             reason=reason,
             note=message,
             type=event_type,
@@ -83,22 +79,14 @@ def create_scaling_event(
             reporting_instance=connection.hostname,
             action="Scaling",
             regarding=client.V1ObjectReference(
-                api_version=api_version,
-                kind=kind,
-                name=name,
-                namespace=namespace,
-                uid=uid
+                api_version=api_version, kind=kind, name=name, namespace=namespace, uid=uid
             ),
-            event_time=now
+            event_time=now,
         )
 
         # Create the event in the Kubernetes API
-        connection.events_v1_api.create_namespaced_event(
-            namespace=namespace,
-            body=body
-        )
+        connection.events_v1_api.create_namespaced_event(namespace=namespace, body=body)
         logger.debug(f"Created event for {kind} {namespace}/{name}: {reason}")
 
     except Exception as e:
-        logger.warning(
-            f"Failed to create event for {kind} {namespace}/{name}: {e}")
+        logger.warning(f"Failed to create event for {kind} {namespace}/{name}: {e}")
