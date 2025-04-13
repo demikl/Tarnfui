@@ -1,6 +1,5 @@
 owner: ${{ github.repository_owner }}
-git-base-url: https://github.com
+git-base-url: https://api.github.com
 git-upload-url: https://uploads.github.com
 index-path: ./index.yaml
-package-path: ./.cr-release-packages
 charts-repo: https://${{ github.repository_owner }}.github.io/Tarnfui
