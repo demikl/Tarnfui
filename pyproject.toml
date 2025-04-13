@@ -1,6 +1,6 @@
 [project]
 name = "tarnfui"
-version = "0.1.0"
+version = "0.1.1"
 description = "Kubernetes cost and carbon energy saver that selectively shutdown workloads during non-working hours on staging clusters"
 readme = "README.md"
 license = "MIT"

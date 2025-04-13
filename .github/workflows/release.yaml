@@ -33,9 +33,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
-          context: .
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/tarnfui:${{ steps.get_version.outputs.VERSION }}
