@@ -93,6 +93,49 @@ class DeploymentResource(KubernetesResource[client.V1Deployment]):
         """
         return deployment.spec.replicas or 0
 
+    def get_current_state(self, deployment: client.V1Deployment) -> int:
+        """Get the current state of a deployment.
+
+        For Deployments, the state is represented by the replica count.
+
+        Args:
+            deployment: The deployment to get the state from.
+
+        Returns:
+            The current replica count.
+        """
+        return self.get_replicas(deployment)
+
+    def suspend_resource(self, deployment: client.V1Deployment) -> None:
+        """Suspend a deployment by setting replicas to 0.
+
+        Args:
+            deployment: The deployment to suspend.
+        """
+        self.set_replicas(deployment, 0)
+
+    def resume_resource(self, deployment: client.V1Deployment, saved_state: int) -> None:
+        """Resume a deployment by restoring its replica count.
+
+        Args:
+            deployment: The deployment to resume.
+            saved_state: The saved replica count to restore.
+        """
+        self.set_replicas(deployment, saved_state)
+
+    def is_suspended(self, deployment: client.V1Deployment) -> bool:
+        """Check if a deployment is currently suspended.
+
+        A deployment is considered suspended if it has 0 replicas.
+
+        Args:
+            deployment: The deployment to check.
+
+        Returns:
+            True if the deployment is suspended (has 0 replicas), False otherwise.
+        """
+        return self.get_replicas(deployment) == 0
+
     def set_replicas(self, deployment: client.V1Deployment, replicas: int) -> None:
         """Set the replica count for a deployment.
 
