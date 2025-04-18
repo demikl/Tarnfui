@@ -32,20 +32,20 @@ class DeploymentResource(KubernetesResource[client.V1Deployment]):
         # API client for deployments
         self.api = connection.apps_v1_api
 
-    def get_resources(self, namespace: str | None = None, batch_size: int = 100) -> list[client.V1Deployment]:
-        """Get all deployments in a namespace or across all namespaces.
+    def iter_resources(self, namespace: str | None = None, batch_size: int = 100) -> list[client.V1Deployment]:
+        """Iterate over all deployments in a namespace or across all namespaces.
 
-        Uses pagination to fetch deployments in batches to limit memory usage.
+        Uses pagination to fetch deployments in batches and yield them one by one
+        to limit memory usage.
 
         Args:
             namespace: Namespace to get deployments from. If None, use the handler's namespace.
             batch_size: Number of deployments to fetch per API call.
 
-        Returns:
-            List of deployments.
+        Yields:
+            Deployments, one at a time.
         """
         ns = namespace or self.namespace
-        all_deployments = []
         continue_token = None
 
         try:
@@ -56,19 +56,17 @@ class DeploymentResource(KubernetesResource[client.V1Deployment]):
                 else:
                     result = self.api.list_deployment_for_all_namespaces(limit=batch_size, _continue=continue_token)
 
-                # Add deployments from this page to the result
-                all_deployments.extend(result.items)
+                # Yield deployments from this page one by one
+                yield from result.items
 
                 # Check if there are more pages to process
                 continue_token = result.metadata._continue
                 if not continue_token:
                     break
 
-            return all_deployments
-
         except ApiException as e:
             logger.error(f"Error getting deployments: {e}")
-            return []
+            return
 
     def get_resource(self, name: str, namespace: str) -> client.V1Deployment:
         """Get a specific deployment by name.
@@ -92,6 +90,49 @@ class DeploymentResource(KubernetesResource[client.V1Deployment]):
             The current replica count.
         """
         return deployment.spec.replicas or 0
+
+    def get_current_state(self, deployment: client.V1Deployment) -> int:
+        """Get the current state of a deployment.
+
+        For Deployments, the state is represented by the replica count.
+
+        Args:
+            deployment: The deployment to get the state from.
+
+        Returns:
+            The current replica count.
+        """
+        return self.get_replicas(deployment)
+
+    def suspend_resource(self, deployment: client.V1Deployment) -> None:
+        """Suspend a deployment by setting replicas to 0.
+
+        Args:
+            deployment: The deployment to suspend.
+        """
+        self.set_replicas(deployment, 0)
+
+    def resume_resource(self, deployment: client.V1Deployment, saved_state: int) -> None:
+        """Resume a deployment by restoring its replica count.
+
+        Args:
+            deployment: The deployment to resume.
+            saved_state: The saved replica count to restore.
+        """
+        self.set_replicas(deployment, saved_state)
+
+    def is_suspended(self, deployment: client.V1Deployment) -> bool:
+        """Check if a deployment is currently suspended.
+
+        A deployment is considered suspended if it has 0 replicas.
+
+        Args:
+            deployment: The deployment to check.
+
+        Returns:
+            True if the deployment is suspended (has 0 replicas), False otherwise.
+        """
+        return self.get_replicas(deployment) == 0
 
     def set_replicas(self, deployment: client.V1Deployment, replicas: int) -> None:
         """Set the replica count for a deployment.

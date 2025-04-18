@@ -10,7 +10,7 @@ import time
 import pytz
 
 from tarnfui.config import TarnfuiConfig, Weekday
-from tarnfui.kubernetes import KubernetesClient
+from tarnfui.kubernetes import KubernetesController
 
 logger = logging.getLogger(__name__)
 
@@ -21,15 +21,15 @@ class Scheduler:
     This class determines when to stop and start deployments based on configured times.
     """
 
-    def __init__(self, config: TarnfuiConfig, kubernetes_client: KubernetesClient):
+    def __init__(self, config: TarnfuiConfig, kubernetes_controller: KubernetesController):
         """Initialize the scheduler.
 
         Args:
             config: The configuration for the scheduler.
-            kubernetes_client: The Kubernetes client to use for operations.
+            kubernetes_controller: The Kubernetes controller to use for operations.
         """
         self.config = config
-        self.kubernetes_client = kubernetes_client
+        self.kubernetes_controller = kubernetes_controller
         self.timezone = pytz.timezone(config.timezone)
 
     def _parse_time(self, time_str: str) -> datetime.time:
@@ -103,10 +103,10 @@ class Scheduler:
 
         if should_be_active:
             logger.info("Cluster should be active, starting deployments")
-            self.kubernetes_client.start_deployments(self.config.namespace)
+            self.kubernetes_controller.resume_resources(["deployments"], self.config.namespace)
         else:
             logger.info("Cluster should be inactive, stopping deployments")
-            self.kubernetes_client.stop_deployments(self.config.namespace)
+            self.kubernetes_controller.suspend_resources(["deployments"], self.config.namespace)
 
     def run_reconciliation_loop(self) -> None:
         """Run the reconciliation loop continuously.

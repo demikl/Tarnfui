@@ -33,7 +33,7 @@ sequenceDiagram
     participant CLI as CLI (main)
     participant S as Scheduler
     participant K as KubernetesController
-    participant R as DeploymentResource
+    participant R as KubernetesResource
     participant A as Kubernetes API
 
     Note over CLI: Application start
@@ -52,25 +52,19 @@ sequenceDiagram
     S->>S: Check if should_be_active()
     
     alt Active hours (daytime on workdays)
-        S->>K: start_resources()
-        K->>R: start_resources()
-        R->>R: Get deployments at zero replicas
-        loop For each deployment
-            R->>R: Get original replicas
-            alt Has saved state
-                R->>A: Scale deployment to saved replicas
-                R->>A: Create 'Started' event
-            end
+        S->>K: resume_resources()
+        K->>R: resume_resource()
+        R->>R: Get saved state
+        alt Has saved state
+            R->>A: Restore resource to saved state
+            R->>A: Create 'Resumed' event
         end
     else Inactive hours (nights and weekends)
-        S->>K: stop_resources()
-        K->>R: stop_resources()
-        R->>R: Get all deployments
-        loop For each deployment with replicas > 0
-            R->>R: Save current replicas
-            R->>A: Scale deployment to zero
-            R->>A: Create 'Stopped' event
-        end
+        S->>K: suspend_resources()
+        K->>R: suspend_resource()
+        R->>R: Save current state
+        R->>A: Suspend resource
+        R->>A: Create 'Suspended' event
     end
 ```
 
@@ -88,7 +82,7 @@ classDiagram
     
     class Scheduler {
         -TarnfuiConfig config
-        -KubernetesClient kubernetes_client
+        -KubernetesController kubernetes_controller
         +reconcile()
         +should_be_active()
         +run_reconciliation_loop()
@@ -117,45 +111,39 @@ classDiagram
         +from_integer()
     }
     
-    class KubernetesClient {
-        +KubernetesController controller
-        +stop_deployments()
-        +start_deployments()
-        +save_deployment_state()
-        +get_original_replicas()
-        +scale_deployment()
-    }
-    
     class KubernetesController {
         +KubernetesConnection connection
         +dict~str, KubernetesResource~ resources
-        +stop_resources()
-        +start_resources()
+        +suspend_resources()
+        +resume_resources()
+        +get_resource_state()
+        +get_saved_state()
     }
     
     class KubernetesResource {
         <<abstract>>
         +KubernetesConnection connection
         +str namespace
-        +get_resources()
-        +get_resource()
-        +scale()
-        +stop_resources()
-        +start_resources()
+        +get_current_state()
+        +suspend_resource()
+        +resume_resource()
+        +save_resource_state()
+        +get_saved_state()
     }
     
     class DeploymentResource {
         +get_replicas()
         +set_replicas()
         +get_resource_key()
+        +suspend_resource()
+        +resume_resource()
     }
     
     CLI --> Scheduler : creates
     CLI --> TarnfuiConfig : creates
     Scheduler --> TarnfuiConfig
-    Scheduler --> KubernetesClient
+    Scheduler --> KubernetesController
     TarnfuiConfig --> Weekday
-    KubernetesClient --> KubernetesController
     KubernetesController --> KubernetesResource
     KubernetesResource <|-- DeploymentResource
 ```
