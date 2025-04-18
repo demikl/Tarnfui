@@ -11,8 +11,7 @@ def main():
     from . import __description__, __version__
 
     parser = argparse.ArgumentParser(description="Tarnfui CLI")
-    parser.add_argument("--version", action="store_true",
-                        help="Show the version and description of Tarnfui")
+    parser.add_argument("--version", action="store_true", help="Show the version and description of Tarnfui")
 
     args = parser.parse_args()
 

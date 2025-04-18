@@ -160,8 +160,6 @@ class KubernetesResource(Generic[T], abc.ABC):
             resource: The resource to save the state for.
         """
         current_state = self.get_current_state(resource)
-        name = self.get_resource_name(resource)
-        namespace = self.get_resource_namespace(resource)
         key = self.get_resource_key(resource)
 
         # Save in memory as a fallback
