@@ -5,6 +5,7 @@ This module provides base classes for all Kubernetes resources.
 
 import abc
 import logging
+from collections.abc import Iterator
 from typing import ClassVar, Generic, TypeVar
 
 from tarnfui.kubernetes.connection import KubernetesConnection
@@ -42,15 +43,18 @@ class KubernetesResource(Generic[T], abc.ABC):
         self._memory_state: dict[str, int] = {}
 
     @abc.abstractmethod
-    def get_resources(self, namespace: str | None = None, batch_size: int = 100) -> list[T]:
-        """Get all resources of this type.
+    def iter_resources(self, namespace: str | None = None, batch_size: int = 100) -> Iterator[T]:
+        """Iterate over all resources of this type.
+
+        This method returns an iterator that yields resources one by one,
+        fetching them in batches to limit memory usage and API load.
 
         Args:
             namespace: Namespace to get resources from. If None, use the handler's namespace.
             batch_size: Number of resources to fetch per API call.
 
-        Returns:
-            List of resources of this type.
+        Yields:
+            Resources of this type, one at a time.
         """
         pass
 
@@ -277,10 +281,10 @@ class KubernetesResource(Generic[T], abc.ABC):
         total_stopped = 0
 
         try:
-            resources = self.get_resources(namespace=ns, batch_size=batch_size)
-            total_processed = len(resources)
+            # Process resources in a streaming fashion
+            for resource in self.iter_resources(namespace=ns, batch_size=batch_size):
+                total_processed += 1
 
-            for resource in resources:
                 # Skip resources that are already scaled to 0
                 if self.get_replicas(resource) == 0:
                     continue
@@ -313,10 +317,10 @@ class KubernetesResource(Generic[T], abc.ABC):
         total_started = 0
 
         try:
-            resources = self.get_resources(namespace=ns, batch_size=batch_size)
-            total_processed = len(resources)
+            # Process resources in a streaming fashion
+            for resource in self.iter_resources(namespace=ns, batch_size=batch_size):
+                total_processed += 1
 
-            for resource in resources:
                 # Only restore resources that are currently scaled to 0
                 if self.get_replicas(resource) > 0:
                     continue

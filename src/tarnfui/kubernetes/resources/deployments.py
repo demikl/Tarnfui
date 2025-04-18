@@ -32,43 +32,43 @@ class DeploymentResource(KubernetesResource[client.V1Deployment]):
         # API client for deployments
         self.api = connection.apps_v1_api
 
-    def get_resources(self, namespace: str | None = None, batch_size: int = 100) -> list[client.V1Deployment]:
-        """Get all deployments in a namespace or across all namespaces.
+    def iter_resources(self, namespace: str | None = None, batch_size: int = 100) -> list[client.V1Deployment]:
+        """Iterate over all deployments in a namespace or across all namespaces.
 
-        Uses pagination to fetch deployments in batches to limit memory usage.
+        Uses pagination to fetch deployments in batches and yield them one by one
+        to limit memory usage.
 
         Args:
             namespace: Namespace to get deployments from. If None, use the handler's namespace.
             batch_size: Number of deployments to fetch per API call.
 
-        Returns:
-            List of deployments.
+        Yields:
+            Deployments, one at a time.
         """
         ns = namespace or self.namespace
-        all_deployments = []
         continue_token = None
 
         try:
             while True:
                 # Fetch current page of deployments
                 if ns:
-                    result = self.api.list_namespaced_deployment(ns, limit=batch_size, _continue=continue_token)
+                    result = self.api.list_namespaced_deployment(
+                        ns, limit=batch_size, _continue=continue_token)
                 else:
-                    result = self.api.list_deployment_for_all_namespaces(limit=batch_size, _continue=continue_token)
+                    result = self.api.list_deployment_for_all_namespaces(
+                        limit=batch_size, _continue=continue_token)
 
-                # Add deployments from this page to the result
-                all_deployments.extend(result.items)
+                # Yield deployments from this page one by one
+                yield from result.items
 
                 # Check if there are more pages to process
                 continue_token = result.metadata._continue
                 if not continue_token:
                     break
 
-            return all_deployments
-
         except ApiException as e:
             logger.error(f"Error getting deployments: {e}")
-            return []
+            return
 
     def get_resource(self, name: str, namespace: str) -> client.V1Deployment:
         """Get a specific deployment by name.
@@ -157,7 +157,8 @@ class DeploymentResource(KubernetesResource[client.V1Deployment]):
             self.api.patch_namespaced_deployment(
                 name=deployment.metadata.name,
                 namespace=deployment.metadata.namespace,
-                body={"metadata": {"annotations": {annotation_key: annotation_value}}},
+                body={"metadata": {"annotations": {
+                    annotation_key: annotation_value}}},
             )
         except ApiException as e:
             logger.error(
