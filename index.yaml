@@ -2,6 +2,15 @@ apiVersion: v1
 entries:
   tarnfui:
   - apiVersion: v2
+    appVersion: 0.1.3
+    created: "2025-04-18T15:43:21.865973629Z"
+    description: A Helm chart for deploying Tarnfui
+    digest: df18d5684032d1e63050c03fe1e3f3b8763f985f9de36bb9708ac567640d547b
+    name: tarnfui
+    urls:
+    - https://github.com/demikl/Tarnfui/releases/download/tarnfui-0.1.3/tarnfui-0.1.3.tgz
+    version: 0.1.3
+  - apiVersion: v2
     appVersion: 0.1.2
     created: "2025-04-13T09:07:25.021714884Z"
     description: A Helm chart for deploying Tarnfui
@@ -10,4 +19,4 @@ entries:
     urls:
     - https://github.com/demikl/Tarnfui/releases/download/tarnfui-0.1.2/tarnfui-0.1.2.tgz
     version: 0.1.2
-generated: "2025-04-13T09:07:25.021720504Z"
+generated: "2025-04-18T15:43:21.865981153Z"
