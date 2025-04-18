@@ -36,8 +36,7 @@ class KubernetesController:
     def _register_resources(self) -> None:
         """Register all supported resource types with their handlers."""
         # Register standard resource types
-        self.register_resource("deployments", DeploymentResource(
-            self.connection, self.namespace))
+        self.register_resource("deployments", DeploymentResource(self.connection, self.namespace))
 
         # In the future, register additional resource types here:
         # self.register_resource("statefulsets", StatefulSetResource(self.connection, self.namespace))
@@ -65,8 +64,7 @@ class KubernetesController:
         """
         handler = self.resources.get(resource_type)
         if not handler:
-            logger.warning(
-                f"No handler registered for resource type {resource_type}")
+            logger.warning(f"No handler registered for resource type {resource_type}")
         return handler
 
     def suspend_resources(self, resource_types: list[str] | None = None, namespace: str | None = None) -> None:
@@ -128,8 +126,7 @@ class KubernetesController:
             resource = handler.get_resource(name, namespace)
             return handler.get_current_state(resource)
         except Exception as e:
-            logger.error(
-                f"Error getting state for {resource_type} {namespace}/{name}: {e}")
+            logger.error(f"Error getting state for {resource_type} {namespace}/{name}: {e}")
             return None
 
     def get_saved_state(self, resource_type: str, name: str, namespace: str) -> Any | None:
@@ -151,6 +148,5 @@ class KubernetesController:
             resource = handler.get_resource(name, namespace)
             return handler.get_saved_state(resource)
         except Exception as e:
-            logger.error(
-                f"Error getting saved state for {resource_type} {namespace}/{name}: {e}")
+            logger.error(f"Error getting saved state for {resource_type} {namespace}/{name}: {e}")
             return None

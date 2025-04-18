@@ -5,7 +5,7 @@ import unittest
 from unittest import mock
 
 from tarnfui.config import TarnfuiConfig, Weekday
-from tarnfui.kubernetes import KubernetesClient
+from tarnfui.kubernetes import KubernetesController
 from tarnfui.scheduler import Scheduler
 
 
@@ -20,8 +20,8 @@ class TestScheduler(unittest.TestCase):
             active_days=[Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI],
             timezone="UTC",
         )
-        self.k8s_client = mock.Mock(spec=KubernetesClient)
-        self.scheduler = Scheduler(config=self.config, kubernetes_client=self.k8s_client)
+        self.k8s_controller = mock.Mock(spec=KubernetesController)
+        self.scheduler = Scheduler(config=self.config, kubernetes_controller=self.k8s_controller)
 
     def test_parse_time(self):
         """Test that time parsing works correctly."""
@@ -38,9 +38,9 @@ class TestScheduler(unittest.TestCase):
         # Call reconcile
         self.scheduler.reconcile()
 
-        # Verify that start_deployments was called and stop_deployments was not
-        self.k8s_client.start_deployments.assert_called_once()
-        self.k8s_client.stop_deployments.assert_not_called()
+        # Verify that resume_resources was called and suspend_resources was not
+        self.k8s_controller.resume_resources.assert_called_once_with(["deployments"], self.config.namespace)
+        self.k8s_controller.suspend_resources.assert_not_called()
 
     @mock.patch("tarnfui.scheduler.Scheduler.should_be_active")
     def test_reconcile_inactive_hours(self, mock_should_be_active):
@@ -51,9 +51,9 @@ class TestScheduler(unittest.TestCase):
         # Call reconcile
         self.scheduler.reconcile()
 
-        # Verify that stop_deployments was called and start_deployments was not
-        self.k8s_client.stop_deployments.assert_called_once()
-        self.k8s_client.start_deployments.assert_not_called()
+        # Verify that suspend_resources was called and resume_resources was not
+        self.k8s_controller.suspend_resources.assert_called_once_with(["deployments"], self.config.namespace)
+        self.k8s_controller.resume_resources.assert_not_called()
 
     @mock.patch("tarnfui.scheduler.Scheduler.get_current_datetime")
     def test_should_be_active_weekday_work_hours(self, mock_get_current_datetime):
@@ -92,7 +92,7 @@ class TestScheduler(unittest.TestCase):
             active_days=[Weekday.MON, Weekday.TUE, Weekday.WED, Weekday.THU, Weekday.FRI],
             timezone="Europe/Paris",
         )
-        scheduler = Scheduler(config=config, kubernetes_client=self.k8s_client)
+        scheduler = Scheduler(config=config, kubernetes_controller=self.k8s_controller)
 
         # Tuesday at 08:00 UTC (09:00 in Paris - should be active)
         dt = datetime.datetime(2023, 1, 3, 9, 0, tzinfo=None)

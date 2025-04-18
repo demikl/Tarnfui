@@ -172,11 +172,9 @@ class KubernetesResource(Generic[T], abc.ABC):
             # Convert state to string for storage in annotation
             state_str = str(current_state)
             self._save_annotation(resource, self.STATE_ANNOTATION, state_str)
-            logger.debug(
-                f"Saved state for {self.RESOURCE_KIND} {key} in annotation: {state_str}")
+            logger.debug(f"Saved state for {self.RESOURCE_KIND} {key} in annotation: {state_str}")
         except Exception as e:
-            logger.warning(
-                f"Failed to save state in annotation for {self.RESOURCE_KIND} {key}: {e}")
+            logger.warning(f"Failed to save state in annotation for {self.RESOURCE_KIND} {key}: {e}")
             logger.info(f"State saved in memory only: {current_state}")
 
     @abc.abstractmethod
@@ -206,27 +204,22 @@ class KubernetesResource(Generic[T], abc.ABC):
         # Try from memory cache first to avoid an API call
         if key in self._memory_state:
             state = self._memory_state[key]
-            logger.debug(
-                f"Retrieved saved state from memory cache for {key}: {state}")
+            logger.debug(f"Retrieved saved state from memory cache for {key}: {state}")
             return state
 
         # Try to get from annotations
         try:
-            annotation_value = self._get_annotation(
-                resource, self.STATE_ANNOTATION)
+            annotation_value = self._get_annotation(resource, self.STATE_ANNOTATION)
             if annotation_value is not None:
                 try:
                     # Convert based on resource type (implementations should handle this)
                     state = self.convert_state_from_string(annotation_value)
-                    logger.debug(
-                        f"Retrieved saved state from annotation for {key}: {state}")
+                    logger.debug(f"Retrieved saved state from annotation for {key}: {state}")
                     return state
                 except (ValueError, TypeError) as e:
-                    logger.warning(
-                        f"Invalid state in annotation for {key}: {e}")
+                    logger.warning(f"Invalid state in annotation for {key}: {e}")
         except Exception as e:
-            logger.warning(
-                f"Error getting annotations for {self.RESOURCE_KIND} {key}: {e}")
+            logger.warning(f"Error getting annotations for {self.RESOURCE_KIND} {key}: {e}")
 
         logger.warning(f"No saved state found for {self.RESOURCE_KIND} {key}")
         return None
@@ -246,8 +239,8 @@ class KubernetesResource(Generic[T], abc.ABC):
             return int(state_str)
         except ValueError:
             # Try to convert to boolean
-            if state_str.lower() in ('true', 'false'):
-                return state_str.lower() == 'true'
+            if state_str.lower() in ("true", "false"):
+                return state_str.lower() == "true"
             # Otherwise return as string
             return state_str
 
@@ -272,7 +265,7 @@ class KubernetesResource(Generic[T], abc.ABC):
             batch_size: Number of resources to process per batch.
         """
         ns = namespace or self.namespace
-        logger.info(f"Starting to stop {self.RESOURCE_KIND}s")
+        logger.info(f"Initiating the process to stop {self.RESOURCE_KIND}s")
 
         total_processed = 0
         total_stopped = 0
@@ -290,8 +283,16 @@ class KubernetesResource(Generic[T], abc.ABC):
                     total_stopped += 1
                     name = self.get_resource_name(resource)
                     namespace = self.get_resource_namespace(resource)
-                    logger.info(
-                        f"Stopped {self.RESOURCE_KIND} {namespace}/{name}")
+                    logger.info(f"Stopped {self.RESOURCE_KIND} {namespace}/{name}")
+                # if the resource should be ignored, tell why in verbose mode
+                elif self.is_suspended(resource):
+                    name = self.get_resource_name(resource)
+                    namespace = self.get_resource_namespace(resource)
+                    logger.debug(f"Skipping {self.RESOURCE_KIND} {namespace}/{name} as it is already suspended")
+                else:
+                    name = self.get_resource_name(resource)
+                    namespace = self.get_resource_namespace(resource)
+                    logger.debug(f"Skipping {self.RESOURCE_KIND} {namespace}/{name} as current state is None")
 
             logger.info(
                 f"Completed processing {total_processed} {self.RESOURCE_KIND}s. "
@@ -331,8 +332,7 @@ class KubernetesResource(Generic[T], abc.ABC):
                     total_started += 1
                     name = self.get_resource_name(resource)
                     namespace = self.get_resource_namespace(resource)
-                    logger.info(
-                        f"Restored {self.RESOURCE_KIND} {namespace}/{name} to previous state")
+                    logger.info(f"Restored {self.RESOURCE_KIND} {namespace}/{name} to previous state: {saved_state}")
 
             logger.info(
                 f"Completed processing {total_processed} {self.RESOURCE_KIND}s. "

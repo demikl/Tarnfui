@@ -52,11 +52,9 @@ class DeploymentResource(KubernetesResource[client.V1Deployment]):
             while True:
                 # Fetch current page of deployments
                 if ns:
-                    result = self.api.list_namespaced_deployment(
-                        ns, limit=batch_size, _continue=continue_token)
+                    result = self.api.list_namespaced_deployment(ns, limit=batch_size, _continue=continue_token)
                 else:
-                    result = self.api.list_deployment_for_all_namespaces(
-                        limit=batch_size, _continue=continue_token)
+                    result = self.api.list_deployment_for_all_namespaces(limit=batch_size, _continue=continue_token)
 
                 # Yield deployments from this page one by one
                 yield from result.items
@@ -200,8 +198,7 @@ class DeploymentResource(KubernetesResource[client.V1Deployment]):
             self.api.patch_namespaced_deployment(
                 name=deployment.metadata.name,
                 namespace=deployment.metadata.namespace,
-                body={"metadata": {"annotations": {
-                    annotation_key: annotation_value}}},
+                body={"metadata": {"annotations": {annotation_key: annotation_value}}},
             )
         except ApiException as e:
             logger.error(

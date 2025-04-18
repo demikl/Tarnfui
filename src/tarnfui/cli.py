@@ -8,7 +8,7 @@ import logging
 import sys
 
 from tarnfui.config import TarnfuiConfig, Weekday
-from tarnfui.kubernetes import KubernetesClient
+from tarnfui.kubernetes import KubernetesController
 from tarnfui.scheduler import Scheduler
 
 
@@ -116,11 +116,11 @@ def main(args: list[str] | None = None) -> int:
             f"namespace={config.namespace or 'all'}"
         )
 
-        # Create Kubernetes client
-        k8s_client = KubernetesClient(namespace=config.namespace)
+        # Create Kubernetes controller
+        k8s_controller = KubernetesController(namespace=config.namespace)
 
         # Create scheduler
-        scheduler = Scheduler(config=config, kubernetes_client=k8s_client)
+        scheduler = Scheduler(config=config, kubernetes_controller=k8s_controller)
 
         if parsed_args.reconcile_once:
             logger.info("Running reconciliation once")
