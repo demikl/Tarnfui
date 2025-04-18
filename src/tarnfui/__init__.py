@@ -1,6 +1,6 @@
 import argparse
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 __description__ = (
     "Kubernetes cost and carbon energy saver that selectively shutdown workloads during non-working hours "
     "on staging clusters"

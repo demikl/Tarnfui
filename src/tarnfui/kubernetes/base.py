@@ -9,6 +9,7 @@ from collections.abc import Iterator
 from typing import Any, ClassVar, Generic, TypeVar
 
 from tarnfui.kubernetes.connection import KubernetesConnection
+from tarnfui.kubernetes.resources.events import create_restoration_event, create_suspension_event
 
 logger = logging.getLogger(__name__)
 
@@ -278,9 +279,28 @@ class KubernetesResource(Generic[T], abc.ABC):
                 if current_state is not None and not self.is_suspended(resource):
                     self.save_resource_state(resource)
                     self.suspend_resource(resource)
-                    total_stopped += 1
+
+                    # Create an event for the suspended resource
                     name = self.get_resource_name(resource)
                     namespace = self.get_resource_namespace(resource)
+                    message = (
+                        f"Resource was suspended by Tarnfui during non-working hours. Original state: {current_state}"
+                    )
+                    try:
+                        create_suspension_event(
+                            connection=self.connection,
+                            resource=resource,
+                            api_version=self.RESOURCE_API_VERSION,
+                            kind=self.RESOURCE_KIND,
+                            message=message,
+                        )
+                        logger.debug(f"Created suspension event for {self.RESOURCE_KIND} {namespace}/{name}")
+                    except Exception as event_error:
+                        logger.warning(
+                            f"Failed to create event for {self.RESOURCE_KIND} {namespace}/{name}: {event_error}"
+                        )
+
+                    total_stopped += 1
                     logger.info(f"Stopped {self.RESOURCE_KIND} {namespace}/{name}")
                 # if the resource should be ignored, tell why in verbose mode
                 elif self.is_suspended(resource):
@@ -327,9 +347,26 @@ class KubernetesResource(Generic[T], abc.ABC):
 
                 if saved_state is not None:
                     self.resume_resource(resource, saved_state)
-                    total_started += 1
+
+                    # Create an event for the restored resource
                     name = self.get_resource_name(resource)
                     namespace = self.get_resource_namespace(resource)
+                    message = f"Resource was restored by Tarnfui during working hours. Restored state: {saved_state}"
+                    try:
+                        create_restoration_event(
+                            connection=self.connection,
+                            resource=resource,
+                            api_version=self.RESOURCE_API_VERSION,
+                            kind=self.RESOURCE_KIND,
+                            message=message,
+                        )
+                        logger.debug(f"Created restoration event for {self.RESOURCE_KIND} {namespace}/{name}")
+                    except Exception as event_error:
+                        logger.warning(
+                            f"Failed to create event for {self.RESOURCE_KIND} {namespace}/{name}: {event_error}"
+                        )
+
+                    total_started += 1
                     logger.info(f"Restored {self.RESOURCE_KIND} {namespace}/{name} to previous state: {saved_state}")
 
             logger.info(

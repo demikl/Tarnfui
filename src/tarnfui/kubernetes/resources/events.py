@@ -20,12 +20,74 @@ EVENT_TYPE_WARNING = "Warning"
 # Constants for event reasons
 EVENT_REASON_STOPPED = "Stopped"
 EVENT_REASON_STARTED = "Started"
+EVENT_REASON_SUSPENDED = "Suspended"
+EVENT_REASON_RESTORED = "Restored"
+
+# Constants for event actions
+EVENT_ACTION_SUSPENSION = "Suspension"
+EVENT_ACTION_RESTORATION = "Restoration"
 
 # Component name for events
 EVENT_COMPONENT = "tarnfui"
 
 
-def create_scaling_event(
+def create_suspension_event(
+    connection: KubernetesConnection,
+    resource: Any,
+    api_version: str,
+    kind: str,
+    message: str,
+) -> None:
+    """Create a Kubernetes event for a resource suspension operation.
+
+    Args:
+        connection: The Kubernetes connection to use
+        resource: The resource object that was suspended
+        api_version: API version of the resource
+        kind: Resource kind
+        message: Detailed message for the event
+    """
+    _create_event(
+        connection=connection,
+        resource=resource,
+        api_version=api_version,
+        kind=kind,
+        event_type=EVENT_TYPE_NORMAL,
+        reason=EVENT_REASON_SUSPENDED,
+        message=message,
+        action=EVENT_ACTION_SUSPENSION,
+    )
+
+
+def create_restoration_event(
+    connection: KubernetesConnection,
+    resource: Any,
+    api_version: str,
+    kind: str,
+    message: str,
+) -> None:
+    """Create a Kubernetes event for a resource restoration operation.
+
+    Args:
+        connection: The Kubernetes connection to use
+        resource: The resource object that was restored
+        api_version: API version of the resource
+        kind: Resource kind
+        message: Detailed message for the event
+    """
+    _create_event(
+        connection=connection,
+        resource=resource,
+        api_version=api_version,
+        kind=kind,
+        event_type=EVENT_TYPE_NORMAL,
+        reason=EVENT_REASON_RESTORED,
+        message=message,
+        action=EVENT_ACTION_RESTORATION,
+    )
+
+
+def _create_event(
     connection: KubernetesConnection,
     resource: Any,
     api_version: str,
@@ -33,8 +95,9 @@ def create_scaling_event(
     event_type: str,
     reason: str,
     message: str,
+    action: str,
 ) -> None:
-    """Create a Kubernetes event for a resource scaling operation.
+    """Create a Kubernetes event for a resource operation.
 
     Args:
         connection: The Kubernetes connection to use
@@ -44,6 +107,7 @@ def create_scaling_event(
         event_type: Type of event (Normal or Warning)
         reason: Short reason for the event
         message: Detailed message for the event
+        action: Action being performed (Scaling, Suspension, Restoration)
     """
     try:
         # Get resource metadata
@@ -77,7 +141,7 @@ def create_scaling_event(
             type=event_type,
             reporting_controller=EVENT_COMPONENT,
             reporting_instance=connection.hostname,
-            action="Scaling",
+            action=action,
             regarding=client.V1ObjectReference(
                 api_version=api_version, kind=kind, name=name, namespace=namespace, uid=uid
             ),
