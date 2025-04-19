@@ -7,6 +7,7 @@ from tarnfui.kubernetes.base import KubernetesResource
 from tarnfui.kubernetes.connection import KubernetesConnection
 from tarnfui.kubernetes.controller import KubernetesController
 from tarnfui.kubernetes.resources.deployments import DeploymentResource
+from tarnfui.kubernetes.resources.statefulsets import StatefulSetResource
 
 
 class TestKubernetesController(unittest.TestCase):
@@ -16,6 +17,8 @@ class TestKubernetesController(unittest.TestCase):
         """Set up test fixtures."""
         # Mock the KubernetesConnection
         self.connection_mock = mock.Mock(spec=KubernetesConnection)
+        # Add the apps_v1_api attribute to the connection mock
+        self.connection_mock.apps_v1_api = mock.Mock()
 
         # Patch the KubernetesConnection constructor
         self.connection_patcher = mock.patch("tarnfui.kubernetes.controller.KubernetesConnection")
@@ -28,6 +31,12 @@ class TestKubernetesController(unittest.TestCase):
         self.deployment_resource_mock = mock.Mock(spec=DeploymentResource)
         self.deployment_resource_class_mock.return_value = self.deployment_resource_mock
 
+        # Patch the StatefulSetResource class
+        self.statefulset_resource_patcher = mock.patch("tarnfui.kubernetes.controller.StatefulSetResource")
+        self.statefulset_resource_class_mock = self.statefulset_resource_patcher.start()
+        self.statefulset_resource_mock = mock.Mock(spec=StatefulSetResource)
+        self.statefulset_resource_class_mock.return_value = self.statefulset_resource_mock
+
         # Create the controller instance
         self.namespace = "test-namespace"
         self.controller = KubernetesController(namespace=self.namespace)
@@ -36,12 +45,14 @@ class TestKubernetesController(unittest.TestCase):
         """Tear down test fixtures."""
         self.connection_patcher.stop()
         self.deployment_resource_patcher.stop()
+        self.statefulset_resource_patcher.stop()
 
     def test_init_with_namespace(self):
         """Test that the controller is initialized with a namespace."""
         self.assertEqual(self.controller.namespace, self.namespace)
         self.connection_class_mock.assert_called_once()
         self.deployment_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
+        self.statefulset_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
 
     def test_init_without_namespace(self):
         """Test that the controller is initialized without a namespace."""

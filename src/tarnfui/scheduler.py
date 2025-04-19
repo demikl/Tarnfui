@@ -97,16 +97,16 @@ class Scheduler:
         """Reconcile the cluster state based on the current time.
 
         This method is the main entry point for the scheduling logic, determining
-        whether to stop or start deployments based on the current time.
+        whether to stop or start workload resources based on the current time.
         """
         should_be_active = self.should_be_active()
 
         if should_be_active:
-            logger.info("Cluster should be active, starting deployments")
-            self.kubernetes_controller.resume_resources(["deployments"], self.config.namespace)
+            logger.info("Cluster should be active, starting workload resources")
+            self.kubernetes_controller.resume_resources(["deployments", "statefulsets"], self.config.namespace)
         else:
-            logger.info("Cluster should be inactive, stopping deployments")
-            self.kubernetes_controller.suspend_resources(["deployments"], self.config.namespace)
+            logger.info("Cluster should be inactive, stopping workload resources")
+            self.kubernetes_controller.suspend_resources(["deployments", "statefulsets"], self.config.namespace)
 
     def run_reconciliation_loop(self) -> None:
         """Run the reconciliation loop continuously.

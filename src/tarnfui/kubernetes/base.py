@@ -43,19 +43,64 @@ class KubernetesResource(Generic[T], abc.ABC):
         # Dictionary to store the original state for resources
         self._memory_state: dict[str, Any] = {}
 
-    @abc.abstractmethod
     def iter_resources(self, namespace: str | None = None, batch_size: int = 100) -> Iterator[T]:
-        """Iterate over all resources of this type.
+        """Iterate over all resources in a namespace or across all namespaces.
 
-        This method returns an iterator that yields resources one by one,
-        fetching them in batches to limit memory usage and API load.
+        Uses pagination to fetch resources in batches and yield them one by one
+        to limit memory usage.
 
         Args:
             namespace: Namespace to get resources from. If None, use the handler's namespace.
             batch_size: Number of resources to fetch per API call.
 
         Yields:
-            Resources of this type, one at a time.
+            Resources, one at a time.
+        """
+        ns = namespace or self.namespace
+        continue_token = None
+
+        try:
+            while True:
+                # Fetch current page of resources
+                if ns:
+                    result = self.list_namespaced_resources(ns, limit=batch_size, _continue=continue_token)
+                else:
+                    result = self.list_all_namespaces_resources(limit=batch_size, _continue=continue_token)
+
+                # Yield resources from this page one by one
+                yield from result.items
+
+                # Check if there are more pages to process
+                continue_token = result.metadata._continue
+                if not continue_token:
+                    break
+
+        except Exception as e:
+            logger.error(f"Error getting {self.RESOURCE_KIND}s: {e}")
+            return
+
+    @abc.abstractmethod
+    def list_namespaced_resources(self, namespace: str, **kwargs) -> Any:
+        """List resources in a specific namespace.
+
+        Args:
+            namespace: The namespace to list resources in.
+            **kwargs: Additional arguments to pass to the API call.
+
+        Returns:
+            The API response containing the list of resources.
+        """
+        pass
+
+    @abc.abstractmethod
+    def list_all_namespaces_resources(self, **kwargs) -> Any:
+        """List resources across all namespaces.
+
+        Args:
+            **kwargs: Additional arguments to pass to the API call.
+
+        Returns:
+            The API response containing the list of resources.
         """
         pass
 
@@ -115,7 +160,6 @@ class KubernetesResource(Generic[T], abc.ABC):
         """
         pass
 
-    @abc.abstractmethod
     def get_resource_key(self, resource: T) -> str:
         """Get a unique key for a resource.
 
@@ -125,9 +169,8 @@ class KubernetesResource(Generic[T], abc.ABC):
         Returns:
             A string that uniquely identifies the resource.
         """
-        pass
+        return f"{self.get_resource_namespace(resource)}/{self.get_resource_name(resource)}"
 
-    @abc.abstractmethod
     def get_resource_name(self, resource: T) -> str:
         """Get the name of a resource.
 
@@ -137,9 +180,8 @@ class KubernetesResource(Generic[T], abc.ABC):
         Returns:
             The name of the resource.
         """
-        pass
+        return resource.metadata.name
 
-    @abc.abstractmethod
     def get_resource_namespace(self, resource: T) -> str:
         """Get the namespace of a resource.
 
@@ -149,7 +191,7 @@ class KubernetesResource(Generic[T], abc.ABC):
         Returns:
             The namespace of the resource.
         """
-        pass
+        return resource.metadata.namespace
 
     def save_resource_state(self, resource: T) -> None:
         """Save the current state for a resource.
@@ -176,7 +218,6 @@ class KubernetesResource(Generic[T], abc.ABC):
             logger.warning(f"Failed to save state in annotation for {self.RESOURCE_KIND} {key}: {e}")
             logger.info(f"State saved in memory only: {current_state}")
 
-    @abc.abstractmethod
     def _save_annotation(self, resource: T, annotation_key: str, annotation_value: str) -> None:
         """Save an annotation on a resource.
 
@@ -184,6 +225,27 @@ class KubernetesResource(Generic[T], abc.ABC):
             resource: The resource to annotate.
             annotation_key: The annotation key.
             annotation_value: The annotation value.
+        """
+        try:
+            # Use the patch_resource method to apply the annotation
+            self.patch_resource(
+                resource=resource,
+                body={"metadata": {"annotations": {annotation_key: annotation_value}}},
+            )
+        except Exception as e:
+            logger.error(
+                f"Error saving annotation for {self.RESOURCE_KIND} "
+                f"{self.get_resource_namespace(resource)}/{self.get_resource_name(resource)}: {e}"
+            )
+            raise
+
+    @abc.abstractmethod
+    def patch_resource(self, resource: T, body: dict) -> None:
+        """Patch a specific resource with the given body.
+
+        Args:
+            resource: The resource to patch.
+            body: The patch body to apply.
         """
         pass
 
@@ -243,7 +305,6 @@ class KubernetesResource(Generic[T], abc.ABC):
             # Otherwise return as string
             return state_str
 
-    @abc.abstractmethod
     def _get_annotation(self, resource: T, annotation_key: str) -> str | None:
         """Get an annotation from a resource.
 
@@ -254,7 +315,13 @@ class KubernetesResource(Generic[T], abc.ABC):
         Returns:
             The annotation value, or None if not found.
         """
-        pass
+        if (
+            hasattr(resource.metadata, "annotations")
+            and resource.metadata.annotations
+            and annotation_key in resource.metadata.annotations
+        ):
+            return resource.metadata.annotations[annotation_key]
+        return None
 
     def stop_resources(self, namespace: str | None = None, batch_size: int = 100) -> None:
         """Suspend all resources.
