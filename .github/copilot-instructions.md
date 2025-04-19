@@ -4,9 +4,12 @@
 
 - **Source Code**: All Python source code is located in `/src/tarnfui/`. Execute it with
   "uv run tarnfui".
-- **Helm Chart**: The Helm chart is located in `/chart/tarnfui/`.
+- **Helm Chart**: The Helm chart is located in `/chart/tarnfui/`. Ensure that it is
+  updated when features are added or removed from the project.
 - **Tests**: All tests are located in `/tests/`. Execute them with this terminal
   command: "source .venv/bin/activate && pytest"
+- **Overview**: the `/README.md` should accuratly reflect the code architecture through
+  its Mermaid diagrams.
 
 ## GitHub Actions
 
@@ -20,7 +23,7 @@
 
 ## Additional Guidelines
 
-- Refer to the requirements document located at `#file:DEVBOOK.md` for implementation progress updates. This file will serve as a development journal and project progress tracker.
+- Refer to the requirements document located at `/DEVBOOK.md` for implementation progress updates. This file will serve as a development journal and project progress tracker.
 - Use an emoji-based system to track the status of tasks:
   - ✅ Completed
   - 🟡 In Progress
