@@ -4,6 +4,7 @@ This module provides specific functionality for managing Kubernetes Deployments.
 """
 
 import logging
+from collections.abc import Generator
 
 from kubernetes import client
 from kubernetes.client.rest import ApiException
@@ -32,7 +33,7 @@ class DeploymentResource(KubernetesResource[client.V1Deployment]):
         # API client for deployments
         self.api = connection.apps_v1_api
 
-    def iter_resources(self, namespace: str | None = None, batch_size: int = 100) -> list[client.V1Deployment]:
+    def iter_resources(self, namespace: str | None = None, batch_size: int = 100) -> Generator[client.V1Deployment]:
         """Iterate over all deployments in a namespace or across all namespaces.
 
         Uses pagination to fetch deployments in batches and yield them one by one
