@@ -53,7 +53,7 @@ sequenceDiagram
     
     alt Active hours (daytime on workdays)
         S->>K: resume_resources()
-        K->>R: resume_resource()
+        K->>R: start_resources()
         R->>R: Get saved state
         alt Has saved state
             R->>A: Restore resource to saved state
@@ -61,7 +61,7 @@ sequenceDiagram
         end
     else Inactive hours (nights and weekends)
         S->>K: suspend_resources()
-        K->>R: suspend_resource()
+        K->>R: stop_resources()
         R->>R: Save current state
         R->>A: Suspend resource
         R->>A: Create 'Suspended' event
@@ -129,14 +129,43 @@ classDiagram
         +resume_resource()
         +save_resource_state()
         +get_saved_state()
+        +stop_resources()
+        +start_resources()
+        +patch_resource()
+        +is_suspended()
+        +get_resource_key()
+        +get_resource_name()
+        +get_resource_namespace()
+        +iter_resources()
+        +list_namespaced_resources()
+        +list_all_namespaces_resources()
+    }
+    
+    class ReplicatedWorkloadResource {
+        <<abstract>>
+        +get_replicas()
+        +set_replicas()
+        +suspend_resource()
+        +resume_resource()
+        +is_suspended()
     }
     
     class DeploymentResource {
-        +get_replicas()
-        +set_replicas()
-        +get_resource_key()
-        +suspend_resource()
-        +resume_resource()
+        +RESOURCE_API_VERSION = "apps/v1"
+        +RESOURCE_KIND = "Deployment"
+        +get_resource()
+        +patch_resource()
+        +list_namespaced_resources()
+        +list_all_namespaces_resources()
+    }
+    
+    class StatefulSetResource {
+        +RESOURCE_API_VERSION = "apps/v1"
+        +RESOURCE_KIND = "StatefulSet"
+        +get_resource()
+        +patch_resource()
+        +list_namespaced_resources()
+        +list_all_namespaces_resources()
     }
     
     CLI --> Scheduler : creates
@@ -145,7 +174,9 @@ classDiagram
     Scheduler --> KubernetesController
     TarnfuiConfig --> Weekday
     KubernetesController --> KubernetesResource
-    KubernetesResource <|-- DeploymentResource
+    KubernetesResource <|-- ReplicatedWorkloadResource
+    ReplicatedWorkloadResource <|-- DeploymentResource
+    ReplicatedWorkloadResource <|-- StatefulSetResource
 ```
 
 ## Using the Helm Chart

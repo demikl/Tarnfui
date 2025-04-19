@@ -20,6 +20,7 @@ class MockKubernetesResource(KubernetesResource[dict]):
         """Initialize the mock resource."""
         super().__init__(connection, namespace)
         self.suspended_resources = set()  # Track suspended resources
+        self.patch_calls = []  # Track patch calls
 
     def iter_resources(self, namespace: str | None = None, batch_size: int = 100) -> Iterator[dict]:
         """Mock implementation of iter_resources."""
@@ -57,11 +58,16 @@ class MockKubernetesResource(KubernetesResource[dict]):
         """Mock implementation of get_resource_namespace."""
         return resource["metadata"]["namespace"]
 
-    def _save_annotation(self, resource: dict, annotation_key: str, annotation_value: str) -> None:
-        """Mock implementation of _save_annotation."""
-        if "annotations" not in resource["metadata"]:
-            resource["metadata"]["annotations"] = {}
-        resource["metadata"]["annotations"][annotation_key] = annotation_value
+    def patch_resource(self, resource: dict, body: dict) -> None:
+        """Mock implementation of patch_resource."""
+        # Track the patch call for verification in tests
+        self.patch_calls.append({"resource": resource, "body": body})
+
+        # Apply the changes to the resource (simple implementation for testing)
+        if "metadata" in body and "annotations" in body["metadata"]:
+            if "annotations" not in resource["metadata"]:
+                resource["metadata"]["annotations"] = {}
+            resource["metadata"]["annotations"].update(body["metadata"]["annotations"])
 
     def _get_annotation(self, resource: dict, annotation_key: str) -> str | None:
         """Mock implementation of _get_annotation."""
@@ -72,6 +78,16 @@ class MockKubernetesResource(KubernetesResource[dict]):
     def is_suspended(self, resource: dict) -> bool:
         """Mock implementation of is_suspended."""
         return self.get_resource_key(resource) in self.suspended_resources
+
+    def list_namespaced_resources(self, namespace: str, **kwargs) -> any:
+        """Mock implementation of list_namespaced_resources."""
+        resources = [{"metadata": {"name": f"resource-{i}", "namespace": namespace}} for i in range(3)]
+        return mock.Mock(items=resources, metadata=mock.Mock(_continue=None))
+
+    def list_all_namespaces_resources(self, **kwargs) -> any:
+        """Mock implementation of list_all_namespaces_resources."""
+        resources = [{"metadata": {"name": f"resource-{i}", "namespace": f"ns-{i}"}} for i in range(3)]
+        return mock.Mock(items=resources, metadata=mock.Mock(_continue=None))
 
 
 class TestKubernetesResource(unittest.TestCase):

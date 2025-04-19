@@ -9,6 +9,7 @@ from typing import Any
 from tarnfui.kubernetes.base import KubernetesResource
 from tarnfui.kubernetes.connection import KubernetesConnection
 from tarnfui.kubernetes.resources.deployments import DeploymentResource
+from tarnfui.kubernetes.resources.statefulsets import StatefulSetResource
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +38,9 @@ class KubernetesController:
         """Register all supported resource types with their handlers."""
         # Register standard resource types
         self.register_resource("deployments", DeploymentResource(self.connection, self.namespace))
+        self.register_resource("statefulsets", StatefulSetResource(self.connection, self.namespace))
 
         # In the future, register additional resource types here:
-        # self.register_resource("statefulsets", StatefulSetResource(self.connection, self.namespace))
         # self.register_resource("daemonsets", DaemonSetResource(self.connection, self.namespace))
         # self.register_resource("kustomizations", KustomizationResource(self.connection, self.namespace))
 
@@ -71,7 +72,7 @@ class KubernetesController:
         """Suspend resources.
 
         This method suspends resources by calling the resource-specific suspend_resource method.
-        For deployments, this means scaling to zero replicas.
+        For deployments and statefulsets, this means scaling to zero replicas.
         For other resources, it may mean setting a different property, like spec.suspend for Kustomizations.
 
         Args:
@@ -91,7 +92,7 @@ class KubernetesController:
         """Resume resources.
 
         This method resumes resources by calling the resource-specific resume_resource method.
-        For deployments, this means restoring the original replica count.
+        For deployments and statefulsets, this means restoring the original replica count.
         For other resources, it may mean setting a different property, like spec.suspend for Kustomizations.
 
         Args:
