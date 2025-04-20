@@ -67,6 +67,12 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
 
     parser.add_argument("--reconcile-once", action="store_true", help="Run reconciliation once and exit")
 
+    parser.add_argument(
+        "--resource-types",
+        help="Comma-separated list of resource types to manage (deployments,statefulsets,cronjobs, "
+             "overrides TARNFUI_RESOURCE_TYPES)",
+    )
+
     return parser.parse_args(args)
 
 
@@ -108,16 +114,28 @@ def main(args: list[str] | None = None) -> int:
         if parsed_args.interval:
             config.reconciliation_interval = parsed_args.interval
 
+        # Parse resource types if provided
+        resource_types = None
+        if parsed_args.resource_types:
+            resource_types = [rt.strip().lower() for rt in parsed_args.resource_types.split(",")]
+            # Validate resource types
+            for rt in resource_types:
+                if rt not in KubernetesController.SUPPORTED_RESOURCE_TYPES:
+                    logger.warning(f"Unsupported resource type: {rt}. Will be ignored.")
+        elif config.resource_types:
+            resource_types = config.resource_types
+
         logger.info(
             f"Configuration: startup={config.startup_time}, shutdown={config.shutdown_time}, "
             f"timezone={config.timezone}, "
             f"active_days={[day.value for day in config.active_days]}, "
             f"interval={config.reconciliation_interval}s, "
-            f"namespace={config.namespace or 'all'}"
+            f"namespace={config.namespace or 'all'}, "
+            f"resource_types={resource_types or KubernetesController.DEFAULT_RESOURCE_TYPES}"
         )
 
-        # Create Kubernetes controller
-        k8s_controller = KubernetesController(namespace=config.namespace)
+        # Create Kubernetes controller with resource types
+        k8s_controller = KubernetesController(namespace=config.namespace, resource_types=resource_types)
 
         # Create scheduler
         scheduler = Scheduler(config=config, kubernetes_controller=k8s_controller)

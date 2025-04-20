@@ -74,10 +74,13 @@ class TarnfuiConfig(BaseModel):
     """Configuration class for Tarnfui.
 
     Attributes:
-        shutdown_time: Time to shut down deployments in 24-hour format (HH:MM).
-        startup_time: Time to start up deployments in 24-hour format (HH:MM).
+        shutdown_time: Time to shut down deployments in a 24-hour format (HH:MM).
+        startup_time: Time to start up deployments in a 24-hour format (HH:MM).
         active_days: List of days when the cluster should be active (using Weekday enum).
         timezone: Timezone to use for time calculations.
+        reconciliation_interval: Interval in seconds between reconciliation runs.
+        namespace: Optional namespace to filter resources.
+        resource_types: List of resource types to manage.
     """
 
     shutdown_time: str = Field(default="19:00", json_schema_extra={"env": "TARNFUI_SHUTDOWN_TIME"})
@@ -89,6 +92,7 @@ class TarnfuiConfig(BaseModel):
     timezone: str = Field(default="UTC", json_schema_extra={"env": "TARNFUI_TIMEZONE"})
     reconciliation_interval: int = Field(default=60, json_schema_extra={"env": "TARNFUI_RECONCILIATION_INTERVAL"})
     namespace: str | None = Field(default=None, json_schema_extra={"env": "TARNFUI_NAMESPACE"})
+    resource_types: list[str] | None = Field(default=None, json_schema_extra={"env": "TARNFUI_RESOURCE_TYPES"})
 
     @field_validator("shutdown_time", "startup_time")
     def validate_time_format(cls, v):
@@ -127,6 +131,12 @@ class TarnfuiConfig(BaseModel):
         reconciliation_interval = int(os.getenv("TARNFUI_RECONCILIATION_INTERVAL", "60"))
         namespace = os.getenv("TARNFUI_NAMESPACE")
 
+        # Parse resource types from environment
+        resource_types_str = os.getenv("TARNFUI_RESOURCE_TYPES")
+        resource_types = None
+        if resource_types_str:
+            resource_types = [rt.strip().lower() for rt in resource_types_str.split(",")]
+
         return cls(
             shutdown_time=shutdown_time,
             startup_time=startup_time,
@@ -134,4 +144,5 @@ class TarnfuiConfig(BaseModel):
             timezone=timezone,
             reconciliation_interval=reconciliation_interval,
             namespace=namespace,
+            resource_types=resource_types,
         )

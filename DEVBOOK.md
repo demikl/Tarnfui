@@ -52,6 +52,12 @@ This file serves as a development journal and project progress tracker. Tasks ar
    - ✅ Implement the functionality to restore replicas
    - ❌ Test to ensure proper restoration functionality
 
+5. **Support for Different Resource Types**
+   - ✅ Support for Deployment resources
+   - ✅ Support for StatefulSet resources
+   - ✅ Support for CronJob resources
+   - ❌ Support for additional resource types (DaemonSets, etc.)
+
 ### Phase 3: Orchestration and Scheduling
 
 1. **Task Scheduler**
@@ -62,6 +68,7 @@ This file serves as a development journal and project progress tracker. Tasks ar
 2. **Configurable Settings**
    - ✅ Write unit tests for the configuration system
    - ✅ Implement a configuration system (environment variables, config files, etc.)
+   - ✅ Add support for configurable resource types via CLI/environment variables
    - ❌ Perform integration tests with different configurations
 
 ### Phase 4: Deployment and Monitoring
@@ -80,6 +87,7 @@ This file serves as a development journal and project progress tracker. Tasks ar
 3. **Packaging and Deployment**
    - ✅ Create and test the Dockerfile
    - ✅ Create Helm charts
+   - ✅ Update Helm charts to support configurable resource types
    - ✅ Configure CI/CD with GitHub Actions
    - ✅ Set up automated Docker image publication to GHCR
    - ✅ Set up automated Helm chart publication to GitHub Pages
@@ -101,4 +109,5 @@ This file serves as a development journal and project progress tracker. Tasks ar
 ## To Do
 
 - ✅ Set up CI/CD workflows for automated releases.
+- ✅ Add support for configurable resource types (Deployments, StatefulSets, CronJobs).
 - 🟡 Regularly update this file to reflect progress.

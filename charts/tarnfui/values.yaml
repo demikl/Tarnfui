@@ -31,5 +31,13 @@ tarnfui:
   reconciliationInterval: 60
   # Optional namespace to limit scope (leave blank for all namespaces)
   namespace: ""
+  # Resource types to manage
+  resourceTypes:
+    # Enable management of Deployments
+    deployments: true
+    # Enable management of StatefulSets
+    statefulsets: true
+    # Enable management of CronJobs
+    cronjobs: false
   # Additional command line arguments for the Tarnfui application
   extraArgs: []

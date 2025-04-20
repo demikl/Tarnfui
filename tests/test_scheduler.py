@@ -38,10 +38,8 @@ class TestScheduler(unittest.TestCase):
         # Call reconcile
         self.scheduler.reconcile()
 
-        # Verify that resume_resources was called with both resource types
-        self.k8s_controller.resume_resources.assert_called_once_with(
-            ["deployments", "statefulsets"], self.config.namespace
-        )
+        # Verify that resume_resources was called with the namespace
+        self.k8s_controller.resume_resources.assert_called_once_with(namespace=self.config.namespace)
         self.k8s_controller.suspend_resources.assert_not_called()
 
     @mock.patch("tarnfui.scheduler.Scheduler.should_be_active")
@@ -53,10 +51,8 @@ class TestScheduler(unittest.TestCase):
         # Call reconcile
         self.scheduler.reconcile()
 
-        # Verify that suspend_resources was called with both resource types
-        self.k8s_controller.suspend_resources.assert_called_once_with(
-            ["deployments", "statefulsets"], self.config.namespace
-        )
+        # Verify that suspend_resources was called with the namespace
+        self.k8s_controller.suspend_resources.assert_called_once_with(namespace=self.config.namespace)
         self.k8s_controller.resume_resources.assert_not_called()
 
     @mock.patch("tarnfui.scheduler.Scheduler.get_current_datetime")

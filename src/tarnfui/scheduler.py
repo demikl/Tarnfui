@@ -103,10 +103,10 @@ class Scheduler:
 
         if should_be_active:
             logger.info("Cluster should be active, starting workload resources")
-            self.kubernetes_controller.resume_resources(["deployments", "statefulsets"], self.config.namespace)
+            self.kubernetes_controller.resume_resources(namespace=self.config.namespace)
         else:
             logger.info("Cluster should be inactive, stopping workload resources")
-            self.kubernetes_controller.suspend_resources(["deployments", "statefulsets"], self.config.namespace)
+            self.kubernetes_controller.suspend_resources(namespace=self.config.namespace)
 
     def run_reconciliation_loop(self) -> None:
         """Run the reconciliation loop continuously.
