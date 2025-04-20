@@ -46,8 +46,7 @@ class KubernetesController:
                 logger.warning(f"Unsupported resource type: {rt}. Ignoring.")
 
         # Keep only supported resource types
-        self.enabled_resource_types = [rt for rt in self.enabled_resource_types
-                                     if rt in self.SUPPORTED_RESOURCE_TYPES]
+        self.enabled_resource_types = [rt for rt in self.enabled_resource_types if rt in self.SUPPORTED_RESOURCE_TYPES]
 
         # Initialize resource handlers
         self.resources: dict[str, KubernetesResource] = {}

@@ -70,7 +70,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--resource-types",
         help="Comma-separated list of resource types to manage (deployments,statefulsets,cronjobs, "
-             "overrides TARNFUI_RESOURCE_TYPES)",
+        "overrides TARNFUI_RESOURCE_TYPES)",
     )
 
     return parser.parse_args(args)

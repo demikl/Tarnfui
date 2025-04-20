@@ -97,8 +97,9 @@ class TestKubernetesController(unittest.TestCase):
         self.cronjob_resource_class_mock.reset_mock()
 
         # Create controller with all resource types enabled
-        controller = KubernetesController(namespace=self.namespace,
-                                         resource_types=["deployments", "statefulsets", "cronjobs"])
+        controller = KubernetesController(
+            namespace=self.namespace, resource_types=["deployments", "statefulsets", "cronjobs"]
+        )
         self.deployment_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
         self.statefulset_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
         self.cronjob_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
@@ -115,8 +116,7 @@ class TestKubernetesController(unittest.TestCase):
         self.cronjob_resource_class_mock.reset_mock()
 
         # Create controller with invalid resource type
-        controller = KubernetesController(namespace=self.namespace,
-                                         resource_types=["deployments", "invalid_type"])
+        controller = KubernetesController(namespace=self.namespace, resource_types=["deployments", "invalid_type"])
         # Only valid types should be registered
         self.deployment_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
         self.statefulset_resource_class_mock.assert_not_called()
