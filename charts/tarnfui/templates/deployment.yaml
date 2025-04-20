@@ -32,6 +32,9 @@ spec:
         - name: TARNFUI_NAMESPACE
           value: {{ .Values.tarnfui.namespace | quote }}
         {{- end }}
+        {{- /* Set resource types based on configuration */ -}}
+        - name: TARNFUI_RESOURCE_TYPES
+          value: {{ include "tarnfui.resourceTypes" . | quote }}
         args:
         - "--verbose"
         {{- if .Values.tarnfui.extraArgs }}

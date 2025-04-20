@@ -6,6 +6,7 @@ from unittest import mock
 from tarnfui.kubernetes.base import KubernetesResource
 from tarnfui.kubernetes.connection import KubernetesConnection
 from tarnfui.kubernetes.controller import KubernetesController
+from tarnfui.kubernetes.resources.cronjobs import CronJobResource
 from tarnfui.kubernetes.resources.deployments import DeploymentResource
 from tarnfui.kubernetes.resources.statefulsets import StatefulSetResource
 
@@ -19,6 +20,7 @@ class TestKubernetesController(unittest.TestCase):
         self.connection_mock = mock.Mock(spec=KubernetesConnection)
         # Add the apps_v1_api attribute to the connection mock
         self.connection_mock.apps_v1_api = mock.Mock()
+        self.connection_mock.batch_v1_api = mock.Mock()
 
         # Patch the KubernetesConnection constructor
         self.connection_patcher = mock.patch("tarnfui.kubernetes.controller.KubernetesConnection")
@@ -37,6 +39,12 @@ class TestKubernetesController(unittest.TestCase):
         self.statefulset_resource_mock = mock.Mock(spec=StatefulSetResource)
         self.statefulset_resource_class_mock.return_value = self.statefulset_resource_mock
 
+        # Patch the CronJobResource class
+        self.cronjob_resource_patcher = mock.patch("tarnfui.kubernetes.controller.CronJobResource")
+        self.cronjob_resource_class_mock = self.cronjob_resource_patcher.start()
+        self.cronjob_resource_mock = mock.Mock(spec=CronJobResource)
+        self.cronjob_resource_class_mock.return_value = self.cronjob_resource_mock
+
         # Create the controller instance
         self.namespace = "test-namespace"
         self.controller = KubernetesController(namespace=self.namespace)
@@ -46,6 +54,7 @@ class TestKubernetesController(unittest.TestCase):
         self.connection_patcher.stop()
         self.deployment_resource_patcher.stop()
         self.statefulset_resource_patcher.stop()
+        self.cronjob_resource_patcher.stop()
 
     def test_init_with_namespace(self):
         """Test that the controller is initialized with a namespace."""
@@ -53,6 +62,68 @@ class TestKubernetesController(unittest.TestCase):
         self.connection_class_mock.assert_called_once()
         self.deployment_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
         self.statefulset_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
+        # CronJobResource should not be initialized by default
+        self.cronjob_resource_class_mock.assert_not_called()
+
+    def test_init_with_configurable_resource_types(self):
+        """Test initializing the controller with specific resource types."""
+        # Reset mocks
+        self.deployment_resource_class_mock.reset_mock()
+        self.statefulset_resource_class_mock.reset_mock()
+        self.cronjob_resource_class_mock.reset_mock()
+
+        # Create controller with only deployments enabled
+        controller = KubernetesController(namespace=self.namespace, resource_types=["deployments"])
+        self.deployment_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
+        self.statefulset_resource_class_mock.assert_not_called()
+        self.cronjob_resource_class_mock.assert_not_called()
+        self.assertEqual(len(controller.resources), 1)
+        self.assertIn("deployments", controller.resources)
+
+        # Reset mocks
+        self.deployment_resource_class_mock.reset_mock()
+
+        # Create controller with deployments and cronjobs enabled
+        controller = KubernetesController(namespace=self.namespace, resource_types=["deployments", "cronjobs"])
+        self.deployment_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
+        self.statefulset_resource_class_mock.assert_not_called()
+        self.cronjob_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
+        self.assertEqual(len(controller.resources), 2)
+        self.assertIn("deployments", controller.resources)
+        self.assertIn("cronjobs", controller.resources)
+
+        # Reset mocks
+        self.deployment_resource_class_mock.reset_mock()
+        self.cronjob_resource_class_mock.reset_mock()
+
+        # Create controller with all resource types enabled
+        controller = KubernetesController(
+            namespace=self.namespace, resource_types=["deployments", "statefulsets", "cronjobs"]
+        )
+        self.deployment_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
+        self.statefulset_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
+        self.cronjob_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
+        self.assertEqual(len(controller.resources), 3)
+        self.assertIn("deployments", controller.resources)
+        self.assertIn("statefulsets", controller.resources)
+        self.assertIn("cronjobs", controller.resources)
+
+    def test_init_with_invalid_resource_types(self):
+        """Test initializing the controller with invalid resource types."""
+        # Reset mocks
+        self.deployment_resource_class_mock.reset_mock()
+        self.statefulset_resource_class_mock.reset_mock()
+        self.cronjob_resource_class_mock.reset_mock()
+
+        # Create controller with invalid resource type
+        controller = KubernetesController(namespace=self.namespace, resource_types=["deployments", "invalid_type"])
+        # Only valid types should be registered
+        self.deployment_resource_class_mock.assert_called_once_with(self.connection_mock, self.namespace)
+        self.statefulset_resource_class_mock.assert_not_called()
+        self.cronjob_resource_class_mock.assert_not_called()
+        self.assertEqual(len(controller.resources), 1)
+        self.assertIn("deployments", controller.resources)
+        self.assertNotIn("invalid_type", controller.resources)
 
     def test_init_without_namespace(self):
         """Test that the controller is initialized without a namespace."""
@@ -93,24 +164,8 @@ class TestKubernetesController(unittest.TestCase):
         # Verify that None was returned
         self.assertIsNone(handler)
 
-    def test_suspend_resources_specific_types(self):
-        """Test suspending specific resource types."""
-        # Create and register mock resource handlers
-        deployment_handler = mock.Mock(spec=KubernetesResource)
-        statefulset_handler = mock.Mock(spec=KubernetesResource)
-        self.controller.resources["deployments"] = deployment_handler
-        self.controller.resources["statefulsets"] = statefulset_handler
-
-        # Suspend only deployments
-        resource_types = ["deployments"]
-        self.controller.suspend_resources(resource_types, self.namespace)
-
-        # Verify that only the deployment handler was called
-        deployment_handler.stop_resources.assert_called_once_with(namespace=self.namespace)
-        statefulset_handler.stop_resources.assert_not_called()
-
-    def test_suspend_resources_all_types(self):
-        """Test suspending all resource types."""
+    def test_suspend_resources(self):
+        """Test suspending all enabled resources."""
         # Create and register mock resource handlers
         deployment_handler = mock.Mock(spec=KubernetesResource)
         statefulset_handler = mock.Mock(spec=KubernetesResource)
@@ -118,30 +173,14 @@ class TestKubernetesController(unittest.TestCase):
         self.controller.resources["statefulsets"] = statefulset_handler
 
         # Suspend all resources
-        self.controller.suspend_resources(None, self.namespace)
+        self.controller.suspend_resources(self.namespace)
 
-        # Verify that both handlers were called
+        # Verify that all handlers were called
         deployment_handler.stop_resources.assert_called_once_with(namespace=self.namespace)
         statefulset_handler.stop_resources.assert_called_once_with(namespace=self.namespace)
 
-    def test_resume_resources_specific_types(self):
-        """Test resuming specific resource types."""
-        # Create and register mock resource handlers
-        deployment_handler = mock.Mock(spec=KubernetesResource)
-        statefulset_handler = mock.Mock(spec=KubernetesResource)
-        self.controller.resources["deployments"] = deployment_handler
-        self.controller.resources["statefulsets"] = statefulset_handler
-
-        # Resume only deployments
-        resource_types = ["deployments"]
-        self.controller.resume_resources(resource_types, self.namespace)
-
-        # Verify that only the deployment handler was called
-        deployment_handler.start_resources.assert_called_once_with(namespace=self.namespace)
-        statefulset_handler.start_resources.assert_not_called()
-
-    def test_resume_resources_all_types(self):
-        """Test resuming all resource types."""
+    def test_resume_resources(self):
+        """Test resuming all enabled resources."""
         # Create and register mock resource handlers
         deployment_handler = mock.Mock(spec=KubernetesResource)
         statefulset_handler = mock.Mock(spec=KubernetesResource)
@@ -149,9 +188,9 @@ class TestKubernetesController(unittest.TestCase):
         self.controller.resources["statefulsets"] = statefulset_handler
 
         # Resume all resources
-        self.controller.resume_resources(None, self.namespace)
+        self.controller.resume_resources(self.namespace)
 
-        # Verify that both handlers were called
+        # Verify that all handlers were called
         deployment_handler.start_resources.assert_called_once_with(namespace=self.namespace)
         statefulset_handler.start_resources.assert_called_once_with(namespace=self.namespace)
 
