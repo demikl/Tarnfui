@@ -39,5 +39,7 @@ tarnfui:
     statefulsets: true
     # Enable management of CronJobs
     cronjobs: false
+    # Enable management of FluxCD Kustomizations
+    kustomizations: false
   # Additional command line arguments for the Tarnfui application
   extraArgs: []
