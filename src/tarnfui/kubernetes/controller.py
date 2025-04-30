@@ -10,6 +10,7 @@ from tarnfui.kubernetes.base import KubernetesResource
 from tarnfui.kubernetes.connection import KubernetesConnection
 from tarnfui.kubernetes.resources.cronjobs import CronJobResource
 from tarnfui.kubernetes.resources.deployments import DeploymentResource
+from tarnfui.kubernetes.resources.managers import Kustomization
 from tarnfui.kubernetes.resources.statefulsets import StatefulSetResource
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ class KubernetesController:
     # Default enabled resource types
     DEFAULT_RESOURCE_TYPES = ["deployments", "statefulsets"]
     # All supported resource types
-    SUPPORTED_RESOURCE_TYPES = ["deployments", "statefulsets", "cronjobs"]
+    SUPPORTED_RESOURCE_TYPES = ["deployments", "statefulsets", "cronjobs", "kustomizations"]
 
     def __init__(self, namespace: str | None = None, resource_types: list[str] | None = None):
         """Initialize the Kubernetes controller.
@@ -67,11 +68,9 @@ class KubernetesController:
             self.register_resource("cronjobs", CronJobResource(self.connection, self.namespace))
             logger.info("Enabled support for CronJobs")
 
-        # In the future, register additional resource types here:
-        # if "daemonsets" in self.enabled_resource_types:
-        #     self.register_resource("daemonsets", DaemonSetResource(self.connection, self.namespace))
-        # if "kustomizations" in self.enabled_resource_types:
-        #     self.register_resource("kustomizations", KustomizationResource(self.connection, self.namespace))
+        if "kustomizations" in self.enabled_resource_types:
+            self.register_resource("kustomizations", Kustomization(self.connection, self.namespace))
+            logger.info("Enabled support for Kustomizations")
 
     def register_resource(self, resource_type: str, handler: KubernetesResource) -> None:
         """Register a resource handler.
