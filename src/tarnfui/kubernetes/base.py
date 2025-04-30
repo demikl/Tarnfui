@@ -180,6 +180,8 @@ class KubernetesResource(Generic[T], abc.ABC):
         Returns:
             The name of the resource.
         """
+        if isinstance(resource, dict):
+            return resource.get("metadata", {}).get("name", "")
         return resource.metadata.name
 
     def get_resource_namespace(self, resource: T) -> str:
@@ -191,6 +193,8 @@ class KubernetesResource(Generic[T], abc.ABC):
         Returns:
             The namespace of the resource.
         """
+        if isinstance(resource, dict):
+            return resource.get("metadata", {}).get("namespace", "")
         return resource.metadata.namespace
 
     def save_resource_state(self, resource: T) -> None:
@@ -315,13 +319,193 @@ class KubernetesResource(Generic[T], abc.ABC):
         Returns:
             The annotation value, or None if not found.
         """
-        if (
-            hasattr(resource.metadata, "annotations")
-            and resource.metadata.annotations
-            and annotation_key in resource.metadata.annotations
-        ):
-            return resource.metadata.annotations[annotation_key]
-        return None
+        metadata = resource.get("metadata", {}) if isinstance(resource, dict) else resource.metadata
+        annotations = (
+            metadata.get("annotations", {}) if isinstance(metadata, dict) else getattr(metadata, "annotations", {})
+        )
+        return annotations.get(annotation_key)
+
+    def _process_manager_if_exists(self, resource: T, is_stopping: bool) -> None:
+        """Process a resource manager for a resource if one exists.
+
+        This helper method handles finding and processing a manager resource.
+
+        Args:
+            resource: The resource to find a manager for
+            is_stopping: Whether we're stopping (True) or starting (False) resources
+        """
+        # Check if this resource is managed by a ResourceManager
+        manager_type, manager_name, manager_namespace = self._find_resource_manager(resource)
+        if manager_type:
+            # Use the ResourceManager's process_manager method instead of directly checking/marking
+            action = "stopping" if is_stopping else "starting"
+            logger.info(
+                f"Found manager {manager_type.__class__.RESOURCE_KIND} {manager_namespace}/{manager_name} "
+                f"for {self.RESOURCE_KIND} {self.get_resource_namespace(resource)}/{self.get_resource_name(resource)} "
+                f"while {action} resources"
+            )
+
+            try:
+                # a resource manager typically manages multiple resources
+                # but we only need to process it once
+                if not self._should_process_resource_by_name_namespace(manager_name, manager_namespace, is_stopping):
+                    return
+
+                # Get the actual manager resource
+                manager_resource = manager_type.get_resource(manager_name, manager_namespace)
+
+                # Process the manager using _process_resource to avoid code duplication
+                manager_type._process_resource(manager_resource, is_stopping)
+
+            except Exception as e:
+                logger.error(
+                    f"Error processing manager {manager_type.__class__.RESOURCE_KIND} {manager_namespace}/{manager_name}: {e}"
+                )
+
+    def _create_resource_event(self, resource: T, state: Any, is_suspension: bool) -> None:
+        """Create a suspension or restoration event for a resource.
+
+        Args:
+            resource: The resource to create an event for
+            state: The state to include in the event message
+            is_suspension: True to create a suspension event, False for restoration
+        """
+        name = self.get_resource_name(resource)
+        namespace = self.get_resource_namespace(resource)
+
+        if is_suspension:
+            message = f"Resource was suspended by Tarnfui during non-working hours. Original state: {state}"
+            event_creator = create_suspension_event
+            event_type = "suspension"
+        else:
+            message = f"Resource was restored by Tarnfui during working hours. Restored state: {state}"
+            event_creator = create_restoration_event
+            event_type = "restoration"
+
+        try:
+            event_creator(
+                connection=self.connection,
+                resource=resource,
+                api_version=self.RESOURCE_API_VERSION,
+                kind=self.RESOURCE_KIND,
+                message=message,
+            )
+            logger.debug(f"Created {event_type} event for {self.RESOURCE_KIND} {namespace}/{name}")
+        except Exception as event_error:
+            logger.warning(
+                f"Failed to create {event_type} event for {self.RESOURCE_KIND} {namespace}/{name}: {event_error}"
+            )
+
+    def _should_process_resource(self, resource: T, is_stopping: bool) -> bool:
+        """Check if a resource should be processed.
+
+        Args:
+            resource: The resource to check
+
+        Returns:
+            True if the resource should be processed, False otherwise
+        """
+        # Default implementation, override in subclasses for resource-specific logic
+        return True
+
+    def _should_process_resource_by_name_namespace(self, name: str, namespace: str, is_stopping: bool) -> bool:
+        """Check if a resource should be processed.
+
+        Args:
+            name: The name of the resource to check
+            namespace: The namespace of the resource to check
+            is_stopping: True if stopping the resource, False if starting
+
+        Returns:
+            True if the resource should be processed, False otherwise
+        """
+        # Default implementation, override in subclasses for resource-specific logic
+        return True
+
+    def _process_resource(self, resource: T, is_stopping: bool) -> bool:
+        """Process a single resource for stopping or starting.
+
+        Args:
+            resource: The resource to process
+            is_stopping: True if stopping the resource, False if starting
+
+        Returns:
+            True if the resource was processed (stopped/started), False otherwise
+        """
+        # First, check if this resource has a manager that needs to be processed first
+        self._process_manager_if_exists(resource, is_stopping=is_stopping)
+
+        name = self.get_resource_name(resource)
+        namespace = self.get_resource_namespace(resource)
+
+        if is_stopping:
+            # Process for stopping: check if not suspended and suspend
+            current_state = self.get_current_state(resource)
+            if current_state is not None and not self.is_suspended(resource):
+                # Save the current state and suspend the resource
+                self.save_resource_state(resource)
+                self.suspend_resource(resource)
+
+                # Create an event for the suspended resource
+                self._create_resource_event(resource, current_state, is_suspension=True)
+
+                logger.info(
+                    f"Suspended {self.RESOURCE_KIND} {namespace}/{name} and stored initial state: {current_state}"
+                )
+                return True
+        else:
+            # Process for starting: check if suspended and resume
+            if self.is_suspended(resource):
+                # Get the saved state for this resource
+                saved_state = self.get_saved_state(resource)
+                if saved_state is not None:
+                    # Restore this resource
+                    self.resume_resource(resource, saved_state)
+
+                    # Create an event for the restored resource
+                    self._create_resource_event(resource, saved_state, is_suspension=False)
+
+                    logger.info(f"Restored {self.RESOURCE_KIND} {namespace}/{name} to previous state: {saved_state}")
+                    return True
+
+        return False
+
+    def _process_resources(self, namespace: str | None, batch_size: int, is_stopping: bool) -> tuple[int, int]:
+        """Common logic for processing resources in batches.
+
+        Args:
+            namespace: Namespace to process resources in
+            batch_size: Number of resources to process per batch
+            is_stopping: True if stopping resources, False if starting
+
+        Returns:
+            Tuple of (total_processed, total_affected)
+        """
+        total_processed = 0
+        total_affected = 0
+
+        try:
+            # Process resources in a streaming fashion
+            for resource in self.iter_resources(namespace=namespace, batch_size=batch_size):
+                total_processed += 1
+
+                # Process the resource and track if it was affected
+                if self._should_process_resource(resource, is_stopping) and self._process_resource(
+                    resource, is_stopping
+                ):
+                    total_affected += 1
+
+            # Clear the manager cache after processing all resources
+            # Avoid circular import by importing here
+            from tarnfui.kubernetes.resource_manager import ResourceManager
+
+            ResourceManager.clear_processed_managers()
+
+        except Exception as e:
+            action = "stopping" if is_stopping else "starting"
+            logger.error(f"Error {action} {self.RESOURCE_KIND}s: {e}")
+
+        return total_processed, total_affected
 
     def stop_resources(self, namespace: str | None = None, batch_size: int = 100) -> None:
         """Suspend all resources.
@@ -333,59 +517,12 @@ class KubernetesResource(Generic[T], abc.ABC):
         ns = namespace or self.namespace
         logger.info(f"Initiating the process to stop {self.RESOURCE_KIND}s")
 
-        total_processed = 0
-        total_stopped = 0
+        total_processed, total_stopped = self._process_resources(ns, batch_size, is_stopping=True)
 
-        try:
-            # Process resources in a streaming fashion
-            for resource in self.iter_resources(namespace=ns, batch_size=batch_size):
-                total_processed += 1
-
-                # Save current state and suspend the resource
-                current_state = self.get_current_state(resource)
-                if current_state is not None and not self.is_suspended(resource):
-                    self.save_resource_state(resource)
-                    self.suspend_resource(resource)
-
-                    # Create an event for the suspended resource
-                    name = self.get_resource_name(resource)
-                    namespace = self.get_resource_namespace(resource)
-                    message = (
-                        f"Resource was suspended by Tarnfui during non-working hours. Original state: {current_state}"
-                    )
-                    try:
-                        create_suspension_event(
-                            connection=self.connection,
-                            resource=resource,
-                            api_version=self.RESOURCE_API_VERSION,
-                            kind=self.RESOURCE_KIND,
-                            message=message,
-                        )
-                        logger.debug(f"Created suspension event for {self.RESOURCE_KIND} {namespace}/{name}")
-                    except Exception as event_error:
-                        logger.warning(
-                            f"Failed to create event for {self.RESOURCE_KIND} {namespace}/{name}: {event_error}"
-                        )
-
-                    total_stopped += 1
-                    logger.info(f"Stopped {self.RESOURCE_KIND} {namespace}/{name}")
-                # if the resource should be ignored, tell why in verbose mode
-                elif self.is_suspended(resource):
-                    name = self.get_resource_name(resource)
-                    namespace = self.get_resource_namespace(resource)
-                    logger.debug(f"Skipping {self.RESOURCE_KIND} {namespace}/{name} as it is already suspended")
-                else:
-                    name = self.get_resource_name(resource)
-                    namespace = self.get_resource_namespace(resource)
-                    logger.debug(f"Skipping {self.RESOURCE_KIND} {namespace}/{name} as current state is None")
-
-            logger.info(
-                f"Completed processing {total_processed} {self.RESOURCE_KIND}s. "
-                f"Stopped {total_stopped} {self.RESOURCE_KIND}s."
-            )
-
-        except Exception as e:
-            logger.error(f"Error stopping {self.RESOURCE_KIND}s: {e}")
+        logger.info(
+            f"Completed processing {total_processed} {self.RESOURCE_KIND}s. "
+            f"Stopped {total_stopped} {self.RESOURCE_KIND}s."
+        )
 
     def start_resources(self, namespace: str | None = None, batch_size: int = 100) -> None:
         """Resume all resources.
@@ -397,52 +534,12 @@ class KubernetesResource(Generic[T], abc.ABC):
         ns = namespace or self.namespace
         logger.info(f"Starting to restore {self.RESOURCE_KIND}s")
 
-        total_processed = 0
-        total_started = 0
+        total_processed, total_started = self._process_resources(ns, batch_size, is_stopping=False)
 
-        try:
-            # Process resources in a streaming fashion
-            for resource in self.iter_resources(namespace=ns, batch_size=batch_size):
-                total_processed += 1
-
-                # Only restore resources that are currently suspended
-                if not self.is_suspended(resource):
-                    continue
-
-                # Get the saved state for this resource
-                saved_state = self.get_saved_state(resource)
-
-                if saved_state is not None:
-                    self.resume_resource(resource, saved_state)
-
-                    # Create an event for the restored resource
-                    name = self.get_resource_name(resource)
-                    namespace = self.get_resource_namespace(resource)
-                    message = f"Resource was restored by Tarnfui during working hours. Restored state: {saved_state}"
-                    try:
-                        create_restoration_event(
-                            connection=self.connection,
-                            resource=resource,
-                            api_version=self.RESOURCE_API_VERSION,
-                            kind=self.RESOURCE_KIND,
-                            message=message,
-                        )
-                        logger.debug(f"Created restoration event for {self.RESOURCE_KIND} {namespace}/{name}")
-                    except Exception as event_error:
-                        logger.warning(
-                            f"Failed to create event for {self.RESOURCE_KIND} {namespace}/{name}: {event_error}"
-                        )
-
-                    total_started += 1
-                    logger.info(f"Restored {self.RESOURCE_KIND} {namespace}/{name} to previous state: {saved_state}")
-
-            logger.info(
-                f"Completed processing {total_processed} {self.RESOURCE_KIND}s. "
-                f"Started {total_started} {self.RESOURCE_KIND}s."
-            )
-
-        except Exception as e:
-            logger.error(f"Error starting {self.RESOURCE_KIND}s: {e}")
+        logger.info(
+            f"Completed processing {total_processed} {self.RESOURCE_KIND}s. "
+            f"Started {total_started} {self.RESOURCE_KIND}s."
+        )
 
     def is_suspended(self, resource: T) -> bool:
         """Check if a resource is currently suspended.
@@ -455,3 +552,29 @@ class KubernetesResource(Generic[T], abc.ABC):
         """
         # Default implementation, override in subclasses for resource-specific logic
         return False
+
+    def _find_resource_manager(self, resource: T) -> tuple["ResourceManager | None", str | None, str | None]:
+        """Find a resource manager for this resource if one exists.
+
+        This method attempts to find a manager for this resource by checking all
+        registered ResourceManager subclasses.
+
+        Args:
+            resource: The resource to find a manager for.
+
+        Returns:
+            A tuple containing:
+            - An instance of a ResourceManager if found, None otherwise
+            - The name of the manager resource, or None if no manager was found
+            - The namespace of the manager resource, or None if no manager was found
+        """
+        # Avoid circular import by importing here
+        from tarnfui.kubernetes.resource_manager import ResourceManager
+
+        # Check each ResourceManager subclass to see if it manages this resource
+        for manager_class in ResourceManager.__subclasses__():
+            result = manager_class.find_manager_for_resource(resource, self.connection)
+            if result:
+                manager, name, namespace = result
+                return manager, name, namespace
+        return None, None, None

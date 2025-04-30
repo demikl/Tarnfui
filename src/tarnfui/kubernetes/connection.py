@@ -54,6 +54,7 @@ class KubernetesConnection:
         self.core_v1_api = client.CoreV1Api()
         self.events_v1_api = client.EventsV1Api()
         self.batch_v1_api = client.BatchV1Api()  # Add Batch v1 API for CronJobs
+        self.custom_objects_api = client.CustomObjectsApi()
 
         # Setup for direct API access if needed
         self.api_client = self.apps_v1_api.api_client

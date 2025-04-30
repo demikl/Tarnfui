@@ -16,5 +16,8 @@ Generate a comma-separated list of resource types based on configuration
 {{- if .Values.tarnfui.resourceTypes.cronjobs -}}
 {{- $types = append $types "cronjobs" -}}
 {{- end -}}
+{{- if .Values.tarnfui.resourceTypes.kustomizations -}}
+{{- $types = append $types "kustomizations" -}}
+{{- end -}}
 {{- join "," $types -}}
 {{- end -}}
