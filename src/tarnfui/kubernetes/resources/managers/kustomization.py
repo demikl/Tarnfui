@@ -5,7 +5,7 @@ resources that can manage other Kubernetes workloads.
 """
 
 import logging
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 from tarnfui.kubernetes.connection import KubernetesConnection
 from tarnfui.kubernetes.resource_manager import ResourceManager
@@ -166,7 +166,7 @@ class Kustomization(ResourceManager[dict[str, Any]]):
     @classmethod
     def find_manager_for_resource(
         cls, resource: Any, connection: KubernetesConnection
-    ) -> Optional["Kustomization"]:
+    ) -> tuple["Kustomization", str, str] | None:
         """Find a Kustomization manager for a given resource.
 
         This checks if a resource is managed by a Flux Kustomization by
@@ -177,10 +177,15 @@ class Kustomization(ResourceManager[dict[str, Any]]):
             connection: The Kubernetes connection to use for queries
 
         Returns:
-            A Kustomization instance if a Kustomization manages this resource, None otherwise
+            A tuple containing (Kustomization instance, kustomization_name, kustomization_namespace)
+            if a Kustomization manages this resource, None otherwise
         """
         # Check if the resource has the required metadata
-        if not hasattr(resource, "metadata") or not hasattr(resource.metadata, "labels") or not resource.metadata.labels:
+        if (
+            not hasattr(resource, "metadata")
+            or not hasattr(resource.metadata, "labels")
+            or not resource.metadata.labels
+        ):
             return None
 
         # Flux adds these labels to resources it manages
@@ -198,15 +203,17 @@ class Kustomization(ResourceManager[dict[str, Any]]):
             else:
                 kustomization_namespace = resource.metadata.namespace
 
-            logger.debug(f"Found resource {resource.metadata.namespace}/{resource.metadata.name} managed by "
-                         f"Kustomization {kustomization_namespace}/{kustomization_name}")
+            logger.debug(
+                f"Found resource {resource.metadata.namespace}/{resource.metadata.name} managed by "
+                f"Kustomization {kustomization_namespace}/{kustomization_name}"
+            )
 
             # Create and return a Kustomization instance
             kustomization_manager = Kustomization(connection, kustomization_namespace)
             try:
                 # Try to get the actual Kustomization resource to verify it exists
                 kustomization_manager.get_resource(kustomization_name, kustomization_namespace)
-                return kustomization_manager
+                return (kustomization_manager, kustomization_name, kustomization_namespace)
             except Exception as e:
                 logger.warning(f"Error finding Kustomization {kustomization_namespace}/{kustomization_name}: {e}")
 
